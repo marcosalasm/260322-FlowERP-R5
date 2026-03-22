@@ -670,4 +670,5 @@ export interface PreOpExpense {
   totalGasto: number;
   status: 'Registrado' | 'Cerrado';
   desglose: { [rubroId: number]: number };
+  descripcion?: string;
 }

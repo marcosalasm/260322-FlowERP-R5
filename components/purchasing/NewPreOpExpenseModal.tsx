@@ -16,6 +16,8 @@ export const NewPreOpExpenseModal: React.FC<NewPreOpExpenseModalProps> = ({ isOp
     const [prospectId, setProspectId] = useState<string>('');
     const [budgetId, setBudgetId] = useState<string>('');
     const [amounts, setAmounts] = useState<{ [rubroId: number]: string }>({});
+    const [descripcion, setDescripcion] = useState<string>('');
+    const [montoGeneral, setMontoGeneral] = useState<string>('');
 
     useEffect(() => {
         if (isOpen) {
@@ -23,13 +25,16 @@ export const NewPreOpExpenseModal: React.FC<NewPreOpExpenseModalProps> = ({ isOp
             setProspectId('');
             setBudgetId('');
             setAmounts({});
+            setDescripcion('');
+            setMontoGeneral('');
         }
     }, [isOpen]);
 
     // Fix: Added explicit return type to reduce to avoid 'unknown' inference for the accumulator
     const totalGasto = useMemo(() => {
-        return Object.values(amounts).reduce<number>((sum, val) => sum + (Number(val) || 0), 0);
-    }, [amounts]);
+        const rubrosTotal = Object.values(amounts).reduce<number>((sum, val) => sum + (Number(val) || 0), 0);
+        return rubrosTotal + (Number(montoGeneral) || 0);
+    }, [amounts, montoGeneral]);
 
     const handleAmountChange = (rubroId: number, value: string) => {
         setAmounts(prev => ({ ...prev, [rubroId]: value }));
@@ -64,8 +69,13 @@ export const NewPreOpExpenseModal: React.FC<NewPreOpExpenseModalProps> = ({ isOp
             if (val && Number(val) > 0) cleanAmounts[Number(id)] = Number(val);
         });
 
-        if (Object.keys(cleanAmounts).length === 0) {
-            alert('Debe ingresar al menos un monto en los rubros.');
+        if (Object.keys(cleanAmounts).length === 0 && (!montoGeneral || Number(montoGeneral) <= 0)) {
+            alert('Debe ingresar al menos un monto (general o en los rubros).');
+            return;
+        }
+
+        if (!descripcion.trim()) {
+            alert('Debe ingresar una descripción para el gasto.');
             return;
         }
 
@@ -76,7 +86,8 @@ export const NewPreOpExpenseModal: React.FC<NewPreOpExpenseModalProps> = ({ isOp
             budgetName: selectedBudgetName,
             fecha: new Date().toISOString().split('T')[0],
             totalGasto,
-            desglose: cleanAmounts
+            desglose: cleanAmounts,
+            descripcion: descripcion.trim()
         });
     };
 
@@ -155,6 +166,32 @@ export const NewPreOpExpenseModal: React.FC<NewPreOpExpenseModalProps> = ({ isOp
                             </select>
                         </div>
                     )}
+
+                    <div className="space-y-4 pt-4 border-t">
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Descripción del Gasto *</label>
+                            <input
+                                type="text"
+                                value={descripcion}
+                                onChange={e => setDescripcion(e.target.value)}
+                                placeholder="Ej. Compra de suministros..."
+                                className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Monto General</label>
+                            <div className="flex items-center gap-2">
+                                <span className="text-slate-400 font-mono text-sm">¢</span>
+                                <input
+                                    type="number"
+                                    value={montoGeneral}
+                                    onChange={e => setMontoGeneral(e.target.value)}
+                                    placeholder="0"
+                                    className="w-full p-2 border border-slate-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-primary/20 outline-none"
+                                />
+                            </div>
+                        </div>
+                    </div>
 
                     <div className="border-t pt-4">
                         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Desglose del Gasto</h3>

@@ -17,6 +17,7 @@ export const PreOpExpensesList: React.FC<PreOpExpensesListProps> = ({ expenses, 
                 <thead className="bg-slate-50">
                     <tr>
                         <th className="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Prospecto / Presupuesto</th>
+                        <th className="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Descripción</th>
                         <th className="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Fecha</th>
                         <th className="py-3 px-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Total del Gasto</th>
                         <th className="py-3 px-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Estado</th>
@@ -42,6 +43,9 @@ export const PreOpExpensesList: React.FC<PreOpExpensesListProps> = ({ expenses, 
                                 {expense.id > 1000 && ( // Visual hint for automated records if ID logic allows
                                     <span className="ml-2 px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[9px] font-black uppercase">Vía OC</span>
                                 )}
+                            </td>
+                            <td className="py-4 px-4 text-slate-600 text-sm truncate max-w-xs" title={expense.descripcion || '-'}>
+                                {expense.descripcion || '-'}
                             </td>
                             <td className="py-4 px-4 text-slate-500">{new Date(expense.fecha).toLocaleDateString()}</td>
                             <td className="py-4 px-4 text-right font-mono font-bold text-primary">{formatCurrency(expense.totalGasto)}</td>
@@ -69,7 +73,7 @@ export const PreOpExpensesList: React.FC<PreOpExpensesListProps> = ({ expenses, 
                     ))}
                     {expenses.length === 0 && (
                         <tr>
-                            <td colSpan={6} className="py-12 text-center text-slate-400 italic">No hay gastos registrados.</td>
+                            <td colSpan={7} className="py-12 text-center text-slate-400 italic">No hay gastos registrados.</td>
                         </tr>
                     )}
                 </tbody>

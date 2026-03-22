@@ -654,6 +654,8 @@ export const preOpExpenses = pgTable('pre_op_expenses', {
     totalGasto: numeric('total_gasto').notNull().default('0'),
     status: text('status').notNull().default('Registrado'),
     desglose: jsonb('desglose').notNull().default({}),
+    ad_hoc_expenses: jsonb('ad_hoc_expenses').default([]),
+    descripcion: text('descripcion'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
