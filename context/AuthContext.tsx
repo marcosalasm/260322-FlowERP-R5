@@ -7,6 +7,8 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+    signInWithGoogle: () => Promise<{ error: Error | null }>;
+    resetPassword: (email: string) => Promise<{ error: Error | null }>;
     signOut: () => Promise<void>;
 }
 
@@ -54,12 +56,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return { error };
     };
 
+    const signInWithGoogle = async () => {
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+        });
+        return { error };
+    };
+
+    const resetPassword = async (email: string) => {
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        return { error };
+    };
+
     const signOut = async () => {
         await supabase.auth.signOut();
     };
 
     return (
-        <AuthContext.Provider value={{ session, user, loading, signIn, signOut }}>
+        <AuthContext.Provider value={{ session, user, loading, signIn, signInWithGoogle, resetPassword, signOut }}>
             {children}
         </AuthContext.Provider>
     );
