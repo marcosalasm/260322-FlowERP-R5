@@ -203,7 +203,7 @@ const App: React.FC = () => {
       if (livePreOpRubros) setPreOpRubros(livePreOpRubros);
       if (livePreOpExpenses) setPreOpExpenses(livePreOpExpenses);
       if (liveRoles && liveRoles.length > 0) setRoles(liveRoles);
-      if (liveCompanyInfo && liveCompanyInfo.name) setCompanyInfo(liveCompanyInfo);
+      if (liveCompanyInfo) setCompanyInfo(liveCompanyInfo);
     };
 
     fetchData();

@@ -575,7 +575,7 @@ export const apiService = {
         const r = await fetchWithAuth(`${API_URL}/company-info`);
         if (!r.ok) throw new Error('API [company-info]: Failed to fetch');
         const data = await r.json();
-        return (data && data.length > 0) ? data[0] : null;
+        return (data && Object.keys(data).length > 0) ? data : null;
     },
     updateCompanyInfo: async (data: any) => {
         const r = await fetchWithAuth(`${API_URL}/company-info`, { method: 'POST', body: JSON.stringify(data) });
