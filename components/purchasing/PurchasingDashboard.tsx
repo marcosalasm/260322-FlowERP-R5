@@ -86,6 +86,7 @@ const PurchasingDashboard: React.FC = () => {
     const [selectedCreditNote, setSelectedCreditNote] = useState<CreditNote | null>(null);
     const [selectedPayable, setSelectedPayable] = useState<AccountPayable | null>(null);
     const [receiptForCreditNote, setReceiptForCreditNote] = useState<GoodsReceipt | null>(null);
+    const [selectedPreOpExpense, setSelectedPreOpExpense] = useState<PreOpExpense | null>(null);
 
     const [filters, setFilters] = useState<FilterState>({});
     const [activeView, setActiveView] = useState<PurchaseView>('requests');
@@ -605,16 +606,24 @@ const PurchasingDashboard: React.FC = () => {
 
     const handleSavePreOpExpense = async (data: Omit<PreOpExpense, 'id' | 'status'>) => {
         try {
-            const newExpense = await apiService.createPreOpExpense({
-                ...data,
-                status: 'Registrado'
-            });
-            setPreOpExpenses(prev => [newExpense, ...prev]);
-            showToast('Gasto pre-operativo registrado con éxito.', 'success');
+            if (selectedPreOpExpense) {
+                const updatedExpense = { ...selectedPreOpExpense, ...data };
+                const saved = await apiService.updatePreOpExpense(updatedExpense.id, updatedExpense);
+                setPreOpExpenses(prev => prev.map(e => e.id === saved.id ? saved : e));
+                showToast('Gasto guardado con éxito.', 'success');
+            } else {
+                const newExpense = await apiService.createPreOpExpense({
+                    ...data,
+                    status: 'Registrado'
+                });
+                setPreOpExpenses(prev => [newExpense, ...prev]);
+                showToast('Gasto pre-operativo registrado con éxito.', 'success');
+            }
             setIsNewPreOpModalOpen(false);
+            setSelectedPreOpExpense(null);
         } catch (error) {
             console.error('Error saving expense:', error);
-            showToast('Error al registrar el gasto.', 'error');
+            showToast('Error al guardar el gasto.', 'error');
         }
     };
 
@@ -807,7 +816,7 @@ const PurchasingDashboard: React.FC = () => {
                     </>
                 );
             case 'preop':
-                return <PreOpExpensesList expenses={preOpExpenses} rubros={preOpRubros} />;
+                return <PreOpExpensesList expenses={preOpExpenses} rubros={preOpRubros} onEdit={(expense) => { setSelectedPreOpExpense(expense); setIsNewPreOpModalOpen(true); }} />;
             case 'expenses':
                 return <ExpenseControl />;
             default:
@@ -972,11 +981,12 @@ const PurchasingDashboard: React.FC = () => {
             />
             <NewPreOpExpenseModal
                 isOpen={isNewPreOpModalOpen}
-                onClose={() => setIsNewPreOpModalOpen(false)}
+                onClose={() => { setIsNewPreOpModalOpen(false); setSelectedPreOpExpense(null); }}
                 onSubmit={handleSavePreOpExpense}
                 prospects={prospects}
                 rubros={preOpRubros}
                 budgets={budgets}
+                initialExpense={selectedPreOpExpense}
             />
             <PreOpConfigModal
                 isOpen={isPreOpConfigModalOpen}

@@ -51,7 +51,7 @@ export const prospects = pgTable('prospects', {
     source: text('source').default('Manual'),
     sourceBonoId: integer('source_bono_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-});
+}).enableRLS();
 
 // Budgets Table
 export const budgets = pgTable('budgets', {
@@ -185,7 +185,7 @@ export const suppliers = pgTable('suppliers', {
     bankAccount2Details: text('bank_account_2_details'),
     sinpePhone: text('sinpe_phone'),
     comments: text('comments'),
-});
+}).enableRLS();
 
 // Purchase Orders
 export const purchaseOrders = pgTable('purchase_orders', {
@@ -324,7 +324,7 @@ export const materials = pgTable('materials', {
     unitCost: numeric('unit_cost'),
     quantity: numeric('quantity').notNull().default('0'),
     lastUpdated: timestamp('last_updated', { withTimezone: true }).defaultNow(),
-});
+}).enableRLS();
 
 // Service Items
 export const serviceItems = pgTable('service_items', {
@@ -334,7 +334,7 @@ export const serviceItems = pgTable('service_items', {
     unit: text('unit').notNull(),
     unitCost: numeric('unit_cost'),
     lastUpdated: timestamp('last_updated', { withTimezone: true }).defaultNow(),
-});
+}).enableRLS();
 
 // Labor Items
 export const laborItems = pgTable('labor_items', {
@@ -343,7 +343,7 @@ export const laborItems = pgTable('labor_items', {
     name: text('name').notNull(),
     hourlyRate: numeric('hourly_rate').notNull().default('0'),
     currency: text('currency').notNull().default('CRC'),
-});
+}).enableRLS();
 
 // Recurring Order Templates
 export const recurringOrderTemplates = pgTable('recurring_order_templates', {
@@ -352,7 +352,7 @@ export const recurringOrderTemplates = pgTable('recurring_order_templates', {
     name: text('name').notNull(),
     description: text('description'),
     items: jsonb('items').notNull().default([]), // Array of ServiceRequestItem
-});
+}).enableRLS();
 
 // Predetermined Activities
 export const predeterminedActivities = pgTable('predetermined_activities', {
@@ -360,7 +360,7 @@ export const predeterminedActivities = pgTable('predetermined_activities', {
     tenantId: integer('tenant_id').notNull().default(1),
     name: text('name').notNull(),
     baseUnit: text('base_unit').notNull(),
-});
+}).enableRLS();
 
 // Predetermined Sub Activities
 export const predeterminedSubActivities = pgTable('predetermined_sub_activities', {
@@ -373,7 +373,7 @@ export const predeterminedSubActivities = pgTable('predetermined_sub_activities'
     quantityPerBaseUnit: numeric('quantity_per_base_unit').notNull().default('0'),
     unit: text('unit').notNull(),
     notes: text('notes'),
-});
+}).enableRLS();
 
 // Subcontracts
 export const subcontracts = pgTable('subcontracts', {
@@ -445,7 +445,7 @@ export const auditLogs = pgTable('audit_logs', {
     entityId: integer('entity_id'),
     details: jsonb('details'),
     timestamp: timestamp('timestamp', { withTimezone: true }).defaultNow(),
-});
+}).enableRLS();
 
 // --- RELATIONS ---
 
@@ -605,7 +605,7 @@ export const administrativeBudgets = pgTable('administrative_budgets', {
 export const systemSequences = pgTable('system_sequences', {
     prefix: text('prefix').primaryKey(), // e.g: 'PRE', 'FAC', 'REQ'
     lastValue: integer('last_value').notNull().default(0),
-});
+}).enableRLS();
 
 // Administrative Expenses table
 export const administrativeExpenses = pgTable('administrative_expenses', {
@@ -620,7 +620,7 @@ export const administrativeExpenses = pgTable('administrative_expenses', {
     invoiceNumber: text('invoice_number'),
     paymentProofName: text('payment_proof_name'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-});
+}).enableRLS();
 
 export const administrativeBudgetsRelations = relations(administrativeBudgets, ({ many }) => ({
     expenses: many(administrativeExpenses),
@@ -640,7 +640,7 @@ export const preOpRubros = pgTable('pre_op_rubros', {
     tenantId: integer('tenant_id').notNull().default(1),
     nombre: text('nombre').notNull(),
     limitePorProspecto: numeric('limite_por_prospecto').notNull().default('0'),
-});
+}).enableRLS();
 
 // Pre-operative Expenses table
 export const preOpExpenses = pgTable('pre_op_expenses', {

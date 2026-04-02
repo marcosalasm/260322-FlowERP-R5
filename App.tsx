@@ -213,10 +213,9 @@ const App: React.FC = () => {
 
 
   const [currentUser, setCurrentUser] = useState<User>(() => {
-    const generalManagerRole = roles.find(r => r.name === 'Gerente General');
-    if (generalManagerRole) {
-      const activeGM = users.find(u => u.roleIds.includes(generalManagerRole.id) && u.status === 'Active');
-      if (activeGM) return activeGM;
+    if (session?.user?.email) {
+      const activeLoggedUser = users.find(u => u.email === session?.user?.email && u.status === 'Active');
+      if (activeLoggedUser) return activeLoggedUser;
     }
     return users.find(u => u.status === 'Active') || users[0];
   });
@@ -249,26 +248,17 @@ const App: React.FC = () => {
 
 
   useEffect(() => {
-    // If the current user is deactivated, switch to the first available active user.
-    const currentStillExistsAndIsActive = users.find(u => u.id === currentUser.id && u.status === 'Active');
-    if (!currentStillExistsAndIsActive) {
-      const generalManagerRole = roles.find(r => r.name === 'Gerente General');
-      if (generalManagerRole) {
-        const activeGM = users.find(u => u.roleIds.includes(generalManagerRole.id) && u.status === 'Active');
-        if (activeGM) {
-          setCurrentUser(activeGM);
-          return;
-        }
-      }
-      const firstActiveUser = users.find(u => u.status === 'Active');
-      if (firstActiveUser) {
-        setCurrentUser(firstActiveUser);
-      } else if (users.length > 0) {
-        // Fallback if no active users are left
-        setCurrentUser(users[0]);
+    if (session?.user?.email) {
+      const loggedInUser = users.find(u => u.email === session.user?.email && u.status === 'Active');
+      if (loggedInUser && loggedInUser.id !== currentUser.id) {
+        setCurrentUser(loggedInUser);
+      } else if (!loggedInUser && currentUser.status !== 'Active') {
+        const firstActiveUser = users.find(u => u.status === 'Active');
+        if (firstActiveUser) setCurrentUser(firstActiveUser);
+        else if (users.length > 0) setCurrentUser(users[0]);
       }
     }
-  }, [users, roles, currentUser.id]);
+  }, [users, session?.user?.email, currentUser.id, currentUser.status]);
 
   useEffect(() => {
     const updatedProjects = projects.map(p => {

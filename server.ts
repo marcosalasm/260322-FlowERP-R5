@@ -9,6 +9,7 @@ import * as schema from './db/schema';
 import { eq, desc, sql } from 'drizzle-orm';
 import puppeteer from 'puppeteer';
 import { createClient } from '@supabase/supabase-js';
+import nodemailer from 'nodemailer';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || '';
@@ -25,6 +26,66 @@ console.log('Supabase JWT Secret configured:', process.env.SUPABASE_JWT_SECRET ?
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// --- EMAIL TRANSPORTER CONFIG ---
+let mailTransporter: nodemailer.Transporter | null = null;
+const initEmailTransporter = async () => {
+    try {
+        if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+            mailTransporter = nodemailer.createTransport({
+                host: process.env.SMTP_HOST,
+                port: parseInt(process.env.SMTP_PORT || '587', 10),
+                secure: process.env.SMTP_SECURE === 'true',
+                auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+            });
+            console.log('--- Email Transporter Initialized (SMTP) ---');
+        } else {
+            console.log('--- Email Transporter Initialized (Ethereal Fallback) ---');
+            const testAccount = await nodemailer.createTestAccount();
+            mailTransporter = nodemailer.createTransport({
+                host: "smtp.ethereal.email",
+                port: 587,
+                secure: false, 
+                auth: { user: testAccount.user, pass: testAccount.pass },
+            });
+        }
+    } catch (e) {
+        console.error("Email setup failed", e);
+    }
+};
+initEmailTransporter();
+
+const sendWelcomeEmail = async (email: string, name: string, password?: string) => {
+    if (!mailTransporter) return;
+    try {
+        const info = await mailTransporter.sendMail({
+            from: '"FlowERP Admin" <admin@flowerp.com>',
+            to: email,
+            subject: "Bienvenido a FlowERP - Credenciales de Acceso",
+            html: `
+                <div style="font-family: Arial, sans-serif; padding: 20px;">
+                    <h2 style="color: #3b82f6;">Bienvenido a FlowERP</h2>
+                    <p>Hola <strong>${name}</strong>,</p>
+                    <p>Tu cuenta ha sido creada exitosamente. Ahora puedes ingresar al sistema utilizando las siguientes credenciales:</p>
+                    <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p><strong>URL de Acceso:</strong> <a href="${process.env.VITE_APP_URL || 'http://localhost:5173'}">Ingresar a la aplicación</a></p>
+                        <p><strong>Usuario / Correo:</strong> ${email}</p>
+                        ${password ? `<p><strong>Contraseña Temporal:</strong> ${password}</p>` : ''}
+                    </div>
+                    <p style="color: #64748b; font-size: 12px;">Por razones de seguridad, te recomendamos cambiar tu contraseña una vez que hayas ingresado por primera vez o seguir los pasos indicados en la pantalla de inicio de sesión de la aplicación.</p>
+                    <br />
+                    <p>Saludos,<br />El equipo de FlowERP</p>
+                </div>
+            `,
+        });
+        console.log("Welcome email sent: %s", info.messageId);
+        if (info.messageId && typeof mailTransporter.options === 'object' && (mailTransporter.options as any).host === 'smtp.ethereal.email') {
+            console.log("Email Preview URL: %s", nodemailer.getTestMessageUrl(info));
+        }
+    } catch (e) {
+        console.error("Failed to send welcome email:", e);
+    }
+};
 
 // --- 1. GLOBAL AUTHENTICATION MIDDLEWARE ---
 // Validates Supabase JWT and resolves the app user
@@ -128,7 +189,38 @@ app.get('/api/users', async (req, res) => {
 
 app.post('/api/users', async (req, res) => {
     try {
-        const newUser = await db.insert(schema.users).values(req.body).returning();
+        const { roleIds, password, ...userData } = req.body;
+        
+        // 1. Register user in Supabase Auth (allows them to actually login)
+        if (supabase && password) {
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: userData.email,
+                password: password,
+            });
+            if (authError) {
+                console.error("Supabase Auth Error:", authError);
+                return res.status(400).json({ error: `Supabase Auth failed: ${authError.message}` });
+            }
+        }
+
+        // 2. Local DB insert
+        const cleaned = cleanData(userData);
+        const newUser = await db.insert(schema.users).values(cleaned).returning();
+        
+        const createdUserId = newUser[0].id;
+
+        // 3. Assign roles
+        if (roleIds && roleIds.length > 0) {
+            const rolesToInsert = roleIds.map((roleId: number) => ({
+                userId: createdUserId,
+                roleId: roleId
+            }));
+            await db.insert(schema.userRoles).values(rolesToInsert);
+        }
+
+        // 4. Send the welcome email with credentials
+        await sendWelcomeEmail(userData.email, userData.name, password);
+
         res.json(newUser[0]);
     } catch (error) { handleError(res, error); }
 });
@@ -2013,6 +2105,19 @@ app.post('/api/pre-op-expenses', async (req, res) => {
     } catch (error) { handleError(res, error); }
 });
 
+app.put('/api/pre-op-expenses/:id', async (req, res) => {
+    try {
+        const { id, fecha, createdAt, ...rest } = req.body;
+        const cleaned = cleanData(rest);
+        // Ensure desglose is properly passed as JSON if needed by schema
+        const [updated] = await db.update(schema.preOpExpenses)
+            .set({ ...cleaned, fecha }) // preserve fecha
+            .where(eq(schema.preOpExpenses.id, parseInt(req.params.id)))
+            .returning();
+        res.json(updated);
+    } catch (error) { handleError(res, error); }
+});
+
 // --- AUDIT LOGS ---
 app.get('/api/audit-logs', async (req, res) => {
     try {
@@ -2151,6 +2256,19 @@ app.post('/api/admin/seed', async (req, res) => {
         console.error('Error seeding data:', error);
         handleError(res, error);
     }
+});
+
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve static React frontend files from /dist
+app.use(express.static(path.join(__dirname, 'dist')));
+
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 app.listen(port, '0.0.0.0', () => {

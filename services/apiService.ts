@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = (import.meta as any).env?.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001/api' : 'https://flowerp.net/api');
 
 // ─── HTTP helper (for writes: POST / PUT / DELETE) ─────────────────────────
 const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
@@ -599,6 +599,11 @@ export const apiService = {
     createPreOpExpense: async (data: any) => {
         const r = await fetchWithAuth(`${API_URL}/pre-op-expenses`, { method: 'POST', body: JSON.stringify(data) });
         if (!r.ok) throw new Error('Failed to create pre-op expense');
+        return r.json();
+    },
+    updatePreOpExpense: async (id: number, data: any) => {
+        const r = await fetchWithAuth(`${API_URL}/pre-op-expenses/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+        if (!r.ok) throw new Error('Failed to update pre-op expense');
         return r.json();
     },
 

@@ -15,13 +15,6 @@ export const Header: React.FC = () => {
 
   const { user, setUser, users, roles } = appContext;
 
-  const handleUserChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedUserId = parseInt(event.target.value, 10);
-    const selectedUser = users.find(u => u.id === selectedUserId);
-    if (selectedUser) {
-      setUser(selectedUser);
-    }
-  };
 
   const handleSignOut = async () => {
     setLoggingOut(true);
@@ -54,26 +47,7 @@ export const Header: React.FC = () => {
 
         <div className="w-px h-8 bg-slate-200"></div>
 
-        {/* Demo-only feature: User switcher */}
-        <div className="flex items-center space-x-2">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Simular Usuario:</span>
-          <select
-            value={user.id}
-            onChange={handleUserChange}
-            className="p-1.5 border border-slate-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50"
-          >
-            {users.map(u => {
-              const roleNames = u.roleIds.map(id => roles.find(r => r.id === id)?.name).join(', ');
-              return (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({roleNames}) - {u.status === 'Active' ? 'Activo' : 'Inactivo'}
-                </option>
-              );
-            })}
-          </select>
-        </div>
 
-        <div className="w-px h-8 bg-slate-200"></div>
 
         {/* Logout button */}
         <button

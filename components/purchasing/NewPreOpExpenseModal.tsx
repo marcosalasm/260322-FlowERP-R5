@@ -9,9 +9,10 @@ interface NewPreOpExpenseModalProps {
     prospects: Prospect[];
     rubros: PreOpRubro[];
     budgets: Budget[];
+    initialExpense?: PreOpExpense | null;
 }
 
-export const NewPreOpExpenseModal: React.FC<NewPreOpExpenseModalProps> = ({ isOpen, onClose, onSubmit, prospects, rubros, budgets }) => {
+export const NewPreOpExpenseModal: React.FC<NewPreOpExpenseModalProps> = ({ isOpen, onClose, onSubmit, prospects, rubros, budgets, initialExpense }) => {
     const [linkType, setLinkType] = useState<'prospect' | 'budget'>('prospect');
     const [prospectId, setProspectId] = useState<string>('');
     const [budgetId, setBudgetId] = useState<string>('');
@@ -21,14 +22,32 @@ export const NewPreOpExpenseModal: React.FC<NewPreOpExpenseModalProps> = ({ isOp
 
     useEffect(() => {
         if (isOpen) {
-            setLinkType('prospect');
-            setProspectId('');
-            setBudgetId('');
-            setAmounts({});
-            setDescripcion('');
-            setMontoGeneral('');
+            if (initialExpense) {
+                setLinkType(initialExpense.budgetId ? 'budget' : 'prospect');
+                setProspectId(initialExpense.prospectId ? initialExpense.prospectId.toString() : '');
+                setBudgetId(initialExpense.budgetId ? initialExpense.budgetId.toString() : '');
+                const initialAmounts: { [key: number]: string } = {};
+                let sumDesglose = 0;
+                if (initialExpense.desglose) {
+                    Object.entries(initialExpense.desglose).forEach(([id, val]) => {
+                        initialAmounts[Number(id)] = val.toString();
+                        sumDesglose += Number(val);
+                    });
+                }
+                setAmounts(initialAmounts);
+                setDescripcion(initialExpense.descripcion || '');
+                const diff = initialExpense.totalGasto - sumDesglose;
+                setMontoGeneral(diff > 0 ? diff.toString() : '');
+            } else {
+                setLinkType('prospect');
+                setProspectId('');
+                setBudgetId('');
+                setAmounts({});
+                setDescripcion('');
+                setMontoGeneral('');
+            }
         }
-    }, [isOpen]);
+    }, [isOpen, initialExpense]);
 
     // Fix: Added explicit return type to reduce to avoid 'unknown' inference for the accumulator
     const totalGasto = useMemo(() => {
@@ -105,7 +124,7 @@ export const NewPreOpExpenseModal: React.FC<NewPreOpExpenseModalProps> = ({ isOp
             </style>
             <div className="bg-white rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-lg min-h-[500px] h-full max-h-[90vh] flex flex-col transform transition-all" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-start mb-6 shrink-0">
-                    <h2 className="text-2xl font-bold text-slate-800">Registrar Gasto</h2>
+                    <h2 className="text-2xl font-bold text-slate-800">{initialExpense ? 'Corregir Gasto' : 'Registrar Gasto'}</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
