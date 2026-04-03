@@ -90,26 +90,31 @@ export const apiService = {
     },
 
     // ── Prospects ──────────────────────────────────────────────────────────
-    getProspects: async () => sbGet('prospects'),
+    getProspects: async () => {
+        const { data, error } = await supabase.from('prospects').select('*').order('created_at', { ascending: false });
+        if (error) throw new Error(error.message);
+        return data || [];
+    },
     checkDuplicateProspect: async (name: string): Promise<{ exists: boolean; prospect: any | null }> => {
-        const r = await fetchWithAuth(`${API_URL}/prospects/check-duplicate?name=${encodeURIComponent(name)}`);
-        if (!r.ok) return { exists: false, prospect: null };
-        return r.json();
+        // En tu backend esto comprobaba si el nombre coincidía. Hacemos un ilike directo en Supabase:
+        const { data, error } = await supabase.from('prospects').select('*').ilike('company', name).limit(1);
+        if (error || !data || data.length === 0) return { exists: false, prospect: null };
+        return { exists: true, prospect: data[0] };
     },
     createProspect: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/prospects`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) { const t = await r.text(); throw new Error(`Failed to create prospect: ${r.status} - ${t}`); }
-        return r.json();
+        const { data: result, error } = await supabase.from('prospects').insert([data]).select().single();
+        if (error) throw new Error(`Failed to create prospect: ${error.message}`);
+        return result;
     },
     updateProspect: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/prospects/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update prospect');
-        return r.json();
+        const { data: result, error } = await supabase.from('prospects').update(data).eq('id', id).select().single();
+        if (error) throw new Error('Failed to update prospect');
+        return result;
     },
     deleteProspect: async (id: number) => {
-        const r = await fetchWithAuth(`${API_URL}/prospects/${id}`, { method: 'DELETE' });
-        if (!r.ok) throw new Error('Failed to delete prospect');
-        return r.json();
+        const { data: result, error } = await supabase.from('prospects').delete().eq('id', id).select().single();
+        if (error) throw new Error('Failed to delete prospect');
+        return result;
     },
 
     // ── Service Requests ───────────────────────────────────────────────────
