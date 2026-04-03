@@ -93,23 +93,77 @@ export const apiService = {
     getProspects: async () => {
         const { data, error } = await supabase.from('prospects').select('*').order('created_at', { ascending: false });
         if (error) throw new Error(error.message);
-        return data || [];
+        return (data || []).map((p: any) => ({
+            ...p,
+            nextFollowUpDate: p.next_follow_up_date,
+            spouseName: p.spouse_name,
+            followUps: p.follow_ups || [],
+            sourceBonoId: p.source_bono_id
+        }));
     },
     checkDuplicateProspect: async (name: string): Promise<{ exists: boolean; prospect: any | null }> => {
         // En tu backend esto comprobaba si el nombre coincidía. Hacemos un ilike directo en Supabase:
         const { data, error } = await supabase.from('prospects').select('*').ilike('company', name).limit(1);
         if (error || !data || data.length === 0) return { exists: false, prospect: null };
-        return { exists: true, prospect: data[0] };
+        const p = data[0];
+        return { exists: true, prospect: {
+            ...p,
+            nextFollowUpDate: p.next_follow_up_date,
+            spouseName: p.spouse_name,
+            followUps: p.follow_ups || [],
+            sourceBonoId: p.source_bono_id
+        } };
     },
     createProspect: async (data: any) => {
-        const { data: result, error } = await supabase.from('prospects').insert([data]).select().single();
+        const payload = {
+            name: data.name,
+            company: data.company,
+            phone: data.phone,
+            email: data.email,
+            next_follow_up_date: data.nextFollowUpDate,
+            birthday: data.birthday,
+            spouse_name: data.spouseName,
+            children: data.children,
+            hobbies: data.hobbies,
+            follow_ups: data.followUps,
+            source: data.source,
+            source_bono_id: data.sourceBonoId
+        };
+        const { data: result, error } = await supabase.from('prospects').insert([payload]).select().single();
         if (error) throw new Error(`Failed to create prospect: ${error.message}`);
-        return result;
+        return {
+            ...result,
+            nextFollowUpDate: result.next_follow_up_date,
+            spouseName: result.spouse_name,
+            followUps: result.follow_ups || [],
+            sourceBonoId: result.source_bono_id
+        };
     },
     updateProspect: async (id: number, data: any) => {
-        const { data: result, error } = await supabase.from('prospects').update(data).eq('id', id).select().single();
+        const payload: any = {
+            name: data.name,
+            company: data.company,
+            phone: data.phone,
+            email: data.email,
+            next_follow_up_date: data.nextFollowUpDate,
+            birthday: data.birthday,
+            spouse_name: data.spouseName,
+            children: data.children,
+            hobbies: data.hobbies,
+            follow_ups: data.followUps,
+            source: data.source,
+            source_bono_id: data.sourceBonoId
+        };
+        Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+        const { data: result, error } = await supabase.from('prospects').update(payload).eq('id', id).select().single();
         if (error) throw new Error('Failed to update prospect');
-        return result;
+        return {
+            ...result,
+            nextFollowUpDate: result.next_follow_up_date,
+            spouseName: result.spouse_name,
+            followUps: result.follow_ups || [],
+            sourceBonoId: result.source_bono_id
+        };
     },
     deleteProspect: async (id: number) => {
         const { data: result, error } = await supabase.from('prospects').delete().eq('id', id).select().single();
