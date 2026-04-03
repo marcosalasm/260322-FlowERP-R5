@@ -14,12 +14,36 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     return fetch(url, { ...options, headers });
 };
 
-// ─── Supabase GET helper ──────────────────────────────────────────────────
+const toCamel = (s: string) => s.replace(/([-_][a-z])/ig, ($1) => $1.toUpperCase().replace('-', '').replace('_', ''));
+const keysToCamel = (o: any): any => {
+    if (o === Object(o) && !Array.isArray(o) && typeof o !== 'function') {
+        const n: any = {};
+        Object.keys(o).forEach((k) => { n[toCamel(k)] = keysToCamel(o[k]); });
+        return n;
+    } else if (Array.isArray(o)) {
+        return o.map((i) => keysToCamel(i));
+    }
+    return o;
+};
+
+const toSnake = (s: string) => s.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+const keysToSnake = (o: any): any => {
+    if (o === Object(o) && !Array.isArray(o) && typeof o !== 'function') {
+        const n: any = {};
+        Object.keys(o).forEach((k) => { n[toSnake(k)] = keysToSnake(o[k]); });
+        return n;
+    } else if (Array.isArray(o)) {
+        return o.map((i) => keysToSnake(i));
+    }
+    return o;
+};
+
 const sbGet = async (table: string, extraQuery?: (q: any) => any) => {
-    const endpoint = table.replace(/_/g, '-');
-    const r = await fetchWithAuth(`${API_URL}/${endpoint}`);
-    if (!r.ok) throw new Error(`API [${endpoint}]: Failed to fetch`);
-    return r.json();
+    let q = supabase.from(table).select('*');
+    if (extraQuery) q = extraQuery(q);
+    const { data, error } = await q;
+    if (error) throw new Error(`API [${table}]: Failed to fetch: ` + error.message);
+    return keysToCamel(data || []);
 };
 
 export const apiService = {
@@ -414,13 +438,11 @@ export const apiService = {
 
     // ── Materials ──────────────────────────────────────────────────────────
     getMaterials: async () => {
-        const r = await fetchWithAuth(`${API_URL}/materials`);
-        if (!r.ok) throw new Error('API [materials]: Failed to fetch');
-        const raw = await r.json();
-        const data = Array.isArray(raw) ? raw : [];
-        // Ordenar alfabéticamente
-        data.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
-        return data.map((m: any) => ({
+        const { data, error } = await supabase.from('materials').select('*');
+        if (error) throw new Error('API [materials]: Failed to fetch');
+        const arr = data || [];
+        arr.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+        return arr.map((m: any) => ({
             ...m,
             unitCost: Number(m.unitCost ?? m.unit_cost ?? 0),
             quantity: Number(m.quantity ?? 0),
@@ -428,27 +450,32 @@ export const apiService = {
         }));
     },
     createMaterial: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/materials`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create material');
-        return r.json();
+        const payload: any = { ...data };
+        if (payload.unitCost !== undefined) { payload.unit_cost = payload.unitCost; delete payload.unitCost; }
+        if (payload.lastUpdated !== undefined) { payload.last_updated = payload.lastUpdated; delete payload.lastUpdated; }
+        const { data: result, error } = await supabase.from('materials').insert([payload]).select().single();
+        if (error) throw new Error('Failed to create material: ' + error.message);
+        return { ...result, unitCost: result.unit_cost, lastUpdated: result.last_updated };
     },
     updateMaterial: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/materials/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update material');
-        return r.json();
+        const payload: any = { ...data };
+        if (payload.unitCost !== undefined) { payload.unit_cost = payload.unitCost; delete payload.unitCost; }
+        if (payload.lastUpdated !== undefined) { payload.last_updated = payload.lastUpdated; delete payload.lastUpdated; }
+        const { data: result, error } = await supabase.from('materials').update(payload).eq('id', id).select().single();
+        if (error) throw new Error('Failed to update material: ' + error.message);
+        return { ...result, unitCost: result.unit_cost, lastUpdated: result.last_updated };
     },
     deleteMaterial: async (id: number) => {
-        const r = await fetchWithAuth(`${API_URL}/materials/${id}`, { method: 'DELETE' });
-        if (!r.ok) throw new Error('Failed to delete material');
-        return r.json();
+        const { data: result, error } = await supabase.from('materials').delete().eq('id', id).select().single();
+        if (error) throw new Error('Failed to delete material: ' + error.message);
+        return result;
     },
     searchMaterials: async (query: string) => {
-        const r = await fetchWithAuth(`${API_URL}/materials/search?q=${encodeURIComponent(query)}`);
-        if (!r.ok) throw new Error('API [materials/search]: Failed to fetch');
-        const raw = await r.json();
-        const data = Array.isArray(raw) ? raw : [];
-        data.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
-        return data.map((m: any) => ({
+        const { data, error } = await supabase.from('materials').select('*').ilike('name', `%${query}%`);
+        if (error) throw new Error('API [materials/search]: Failed to fetch');
+        const arr = data || [];
+        arr.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+        return arr.map((m: any) => ({
             ...m,
             unitCost: Number(m.unitCost ?? m.unit_cost ?? 0),
             quantity: Number(m.quantity ?? 0),
@@ -458,28 +485,31 @@ export const apiService = {
 
     // ── Service Items (Sub Contratos) ──────────────────────────────────────
     getServiceItems: async () => {
-        const r = await fetchWithAuth(`${API_URL}/service-items`);
-        if (!r.ok) throw new Error('API [service-items]: Failed to fetch');
-        const data = await r.json();
-        return (data ?? []).map((s: any) => ({
+        const { data, error } = await supabase.from('service_items').select('*');
+        if (error) throw new Error('API [service-items]: Failed to fetch');
+        return (data || []).map((s: any) => ({
             ...s,
             unitCost: Number(s.unitCost ?? s.unit_cost ?? 0),
         }));
     },
     createServiceItem: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/service-items`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create service item');
-        return r.json();
+        const payload: any = { ...data };
+        if (payload.unitCost !== undefined) { payload.unit_cost = payload.unitCost; delete payload.unitCost; }
+        const { data: result, error } = await supabase.from('service_items').insert([payload]).select().single();
+        if (error) throw new Error('Failed to create service item: ' + error.message);
+        return { ...result, unitCost: result.unit_cost };
     },
     updateServiceItem: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/service-items/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update service item');
-        return r.json();
+        const payload: any = { ...data };
+        if (payload.unitCost !== undefined) { payload.unit_cost = payload.unitCost; delete payload.unitCost; }
+        const { data: result, error } = await supabase.from('service_items').update(payload).eq('id', id).select().single();
+        if (error) throw new Error('Failed to update service item: ' + error.message);
+        return { ...result, unitCost: result.unit_cost };
     },
     deleteServiceItem: async (id: number) => {
-        const r = await fetchWithAuth(`${API_URL}/service-items/${id}`, { method: 'DELETE' });
-        if (!r.ok) throw new Error('Failed to delete service item');
-        return r.json();
+        const { data: result, error } = await supabase.from('service_items').delete().eq('id', id).select().single();
+        if (error) throw new Error('Failed to delete service item: ' + error.message);
+        return result;
     },
 
     // ── Labor Items (Mano de Obra) ─────────────────────────────────────────
@@ -613,7 +643,10 @@ export const apiService = {
     // ── Administrative Budgets & Expenses ──────────────────────────────────
     getAdministrativeBudgets: async () => sbGet('administrative_budgets'),
     createAdministrativeBudget: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/administrative-budgets`, { method: 'POST', body: JSON.stringify(data) });
+        const r = await supabase.from('administrative_budgets').insert([keysToSnake(data)]).select().single().then(r => ({
+            ok: !r.error,
+            json: async () => keysToCamel(r.data)
+        }));
         if (!r.ok) throw new Error('Failed to create administrative budget');
         return r.json();
     },
