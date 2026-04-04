@@ -9,11 +9,8 @@ async function run() {
     await client.connect();
     console.log("Connected");
     
-    await client.query(`ALTER TABLE quote_responses ADD COLUMN IF NOT EXISTS ai_validation JSONB DEFAULT NULL;`);
-    console.log("Added ai_validation");
-    
-    await client.query(`ALTER TABLE quote_responses ADD COLUMN IF NOT EXISTS ai_score NUMERIC DEFAULT NULL;`);
-    console.log("Added ai_score");
+    await client.query(`ALTER TABLE quote_responses ADD COLUMN IF NOT EXISTS history JSONB DEFAULT '[]'::jsonb;`);
+    console.log("Added history column");
     
     await client.query(`NOTIFY pgrst, 'reload schema';`);
     console.log("Reloaded schema");
