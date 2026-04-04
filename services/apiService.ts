@@ -540,25 +540,26 @@ export const apiService = {
 
     // ── Recurring Order Templates ──────────────────────────────────────────
     getRecurringOrderTemplates: async () => {
-        const r = await fetchWithAuth(`${API_URL}/recurring-order-templates`);
-        if (!r.ok) throw new Error('API [recurring-order-templates]: Failed to fetch');
-        const data = await r.json();
-        return (data ?? []).map((t: any) => ({ ...t, items: t.items ?? [] }));
+        const { data, error } = await supabase.from('recurring_order_templates').select('*');
+        if (error) throw new Error('API [recurring-order-templates]: Failed to fetch');
+        return (data || []).map((t: any) => ({ ...t, items: t.items ?? [] }));
     },
     createRecurringOrderTemplate: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/recurring-order-templates`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create recurring order template');
-        return r.json();
+        const payload: any = { ...data };
+        const { data: result, error } = await supabase.from('recurring_order_templates').insert([payload]).select().single();
+        if (error) throw new Error('Failed to create recurring order template: ' + error.message);
+        return { ...result, items: result.items ?? [] };
     },
     updateRecurringOrderTemplate: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/recurring-order-templates/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update recurring order template');
-        return r.json();
+        const payload: any = { ...data };
+        const { data: result, error } = await supabase.from('recurring_order_templates').update(payload).eq('id', id).select().single();
+        if (error) throw new Error('Failed to update recurring order template: ' + error.message);
+        return { ...result, items: result.items ?? [] };
     },
     deleteRecurringOrderTemplate: async (id: number) => {
-        const r = await fetchWithAuth(`${API_URL}/recurring-order-templates/${id}`, { method: 'DELETE' });
-        if (!r.ok) throw new Error('Failed to delete recurring order template');
-        return r.json();
+        const { data: result, error } = await supabase.from('recurring_order_templates').delete().eq('id', id).select().single();
+        if (error) throw new Error('Failed to delete recurring order template: ' + error.message);
+        return result;
     },
 
     // ── Predetermined Activities ───────────────────────────────────────────
