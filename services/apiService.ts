@@ -304,10 +304,13 @@ export const apiService = {
         if (error) throw new Error('Failed to create purchase order: ' + error.message);
         
         if (items && items.length > 0) {
-            const itemsPayload = items.map((item: any) => ({
-                ...keysToSnake(item),
-                purchase_order_id: newPO.id
-            }));
+            const itemsPayload = items.map((item: any) => {
+                const { id: _itemId, ...restItem } = item;
+                return {
+                    ...keysToSnake(restItem),
+                    purchase_order_id: newPO.id
+                };
+            });
             const { error: itemsError } = await supabase.from('purchase_order_items').insert(itemsPayload);
             if (itemsError) throw new Error('Failed to create purchase order items: ' + itemsError.message);
         }
