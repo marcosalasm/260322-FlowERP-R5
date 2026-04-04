@@ -94,42 +94,18 @@ export const apiService = {
 
     // ── Roles ──────────────────────────────────────────────────────────────
     getRoles: async () => sbGet('roles'),
-    createRole: async (role: any) => {
-        const r = await fetchWithAuth(`${API_URL}/roles`, { method: 'POST', body: JSON.stringify(role) });
-        if (!r.ok) throw new Error('Failed to create role');
-        return r.json();
-    },
-    updateRole: async (id: number, role: any) => {
-        const r = await fetchWithAuth(`${API_URL}/roles/${id}`, { method: 'PUT', body: JSON.stringify(role) });
-        if (!r.ok) throw new Error('Failed to update role');
-        return r.json();
-    },
-    deleteRole: async (id: number) => {
-        const r = await fetchWithAuth(`${API_URL}/roles/${id}`, { method: 'DELETE' });
-        if (!r.ok) throw new Error('Failed to delete role');
-        return r.json();
-    },
+    createRole: async (role: any) => sbInsert('roles', role),
+    updateRole: async (id: number, role: any) => sbUpdate('roles', id, role),
+    deleteRole: async (id: number) => sbDelete('roles', id),
 
     // ── Projects ───────────────────────────────────────────────────────────
     getProjects: async () => sbGet('projects'),
-    createProject: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/projects`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create project');
-        return r.json();
-    },
+    createProject: async (data: any) => sbInsert('projects', data),
 
     // ── Accounts Receivable ────────────────────────────────────────────────
     getAccountsReceivable: async () => sbGet('accounts_receivable'),
-    createAccountReceivable: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/accounts-receivable`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create account receivable');
-        return r.json();
-    },
-    updateAccountReceivable: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/accounts-receivable/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update account receivable');
-        return r.json();
-    },
+    createAccountReceivable: async (data: any) => sbInsert('accounts_receivable', data),
+    updateAccountReceivable: async (id: number, data: any) => sbUpdate('accounts_receivable', id, data),
 
     // ── Prospects ──────────────────────────────────────────────────────────
     getProspects: async () => {
@@ -214,9 +190,48 @@ export const apiService = {
     },
 
     // ── Service Requests ───────────────────────────────────────────────────
-    getServiceRequests: async () => sbGet('service_requests'),
-    createServiceRequest: async (data: any) => sbInsert('service_requests', data),
-    updateServiceRequest: async (id: number, data: any) => sbUpdate('service_requests', id, data),
+    getServiceRequests: async () => {
+        const { data, error } = await supabase.from('service_requests').select('*, items:service_request_items(*)').order('created_at', { ascending: false });
+        if (error) throw new Error('Failed to fetch service requests: ' + error.message);
+        return keysToCamel(data || []);
+    },
+    createServiceRequest: async (data: any) => {
+        const { items, id: _frontendId, ...srData } = data;
+        const payload = keysToSnake(srData);
+        
+        const { data: newSR, error } = await supabase.from('service_requests').insert([payload]).select().single();
+        if (error) throw new Error('Failed to create service request: ' + error.message);
+        
+        if (items && items.length > 0) {
+            const itemsPayload = items.map((item: any) => ({
+                ...keysToSnake(item),
+                service_request_id: newSR.id
+            }));
+            const { error: itemsError } = await supabase.from('service_request_items').insert(itemsPayload);
+            if (itemsError) throw new Error('Failed to create service request items: ' + itemsError.message);
+        }
+        return keysToCamel(newSR);
+    },
+    updateServiceRequest: async (id: number, data: any) => {
+        const { items, ...srData } = data;
+        const payload = keysToSnake(srData);
+        
+        const { data: updatedSR, error } = await supabase.from('service_requests').update(payload).eq('id', id).select().single();
+        if (error) throw new Error('Failed to update service request: ' + error.message);
+        
+        if (items) {
+            await supabase.from('service_request_items').delete().eq('service_request_id', id);
+            if (items.length > 0) {
+                const itemsPayload = items.map((item: any) => {
+                    const { id: _itemId, ...itemRest } = item;
+                    return { ...keysToSnake(itemRest), service_request_id: updatedSR.id };
+                });
+                const { error: itemsError } = await supabase.from('service_request_items').insert(itemsPayload);
+                if (itemsError) throw new Error('Failed to update service request items: ' + itemsError.message);
+            }
+        }
+        return keysToCamel(updatedSR);
+    },
     deleteServiceRequest: async (id: number) => sbDelete('service_requests', id),
     generateServiceRequestPdf: async (id: number, companyInfo: any) => {
         const r = await fetchWithAuth(`${API_URL}/service-requests/${id}/pdf`, { 
@@ -231,59 +246,195 @@ export const apiService = {
     },
 
     // ── Quote Responses ────────────────────────────────────────────────────
-    getQuoteResponses: async () => sbGet('quote_responses'),
-    createQuoteResponse: async (data: any) => sbInsert('quote_responses', data),
-    updateQuoteResponse: async (id: number, data: any) => sbUpdate('quote_responses', id, data),
+    getQuoteResponses: async () => {
+        const { data, error } = await supabase.from('quote_responses').select('*, items:quote_response_items(*)').order('created_at', { ascending: false });
+        if (error) throw new Error('Failed to fetch quote responses: ' + error.message);
+        return keysToCamel(data || []);
+    },
+    createQuoteResponse: async (data: any) => {
+        const { items, id: _frontendId, ...qrData } = data;
+        const payload = keysToSnake(qrData);
+        
+        const { data: newQR, error } = await supabase.from('quote_responses').insert([payload]).select().single();
+        if (error) throw new Error('Failed to create quote response: ' + error.message);
+        
+        if (items && items.length > 0) {
+            const itemsPayload = items.map((item: any) => ({
+                ...keysToSnake(item),
+                quote_response_id: newQR.id
+            }));
+            const { error: itemsError } = await supabase.from('quote_response_items').insert(itemsPayload);
+            if (itemsError) throw new Error('Failed to create quote response items: ' + itemsError.message);
+        }
+        return keysToCamel(newQR);
+    },
+    updateQuoteResponse: async (id: number, data: any) => {
+        const { items, ...qrData } = data;
+        const payload = keysToSnake(qrData);
+        
+        const { data: updatedQR, error } = await supabase.from('quote_responses').update(payload).eq('id', id).select().single();
+        if (error) throw new Error('Failed to update quote response: ' + error.message);
+        
+        if (items) {
+            await supabase.from('quote_response_items').delete().eq('quote_response_id', id);
+            if (items.length > 0) {
+                const itemsPayload = items.map((item: any) => {
+                    const { id: _itemId, ...itemRest } = item;
+                    return { ...keysToSnake(itemRest), quote_response_id: updatedQR.id };
+                });
+                const { error: itemsError } = await supabase.from('quote_response_items').insert(itemsPayload);
+                if (itemsError) throw new Error('Failed to update quote response items: ' + itemsError.message);
+            }
+        }
+        return keysToCamel(updatedQR);
+    },
     deleteQuoteResponse: async (id: number) => sbDelete('quote_responses', id),
 
     // ── Purchase Orders ────────────────────────────────────────────────────
-    getPurchaseOrders: async () => sbGet('purchase_orders'),
-    createPurchaseOrder: async (data: any) => sbInsert('purchase_orders', data),
-    updatePurchaseOrder: async (id: number, data: any) => sbUpdate('purchase_orders', id, data),
+    getPurchaseOrders: async () => {
+        const { data, error } = await supabase.from('purchase_orders').select('*, items:purchase_order_items(*)').order('created_at', { ascending: false });
+        if (error) throw new Error('Failed to fetch purchase orders: ' + error.message);
+        return keysToCamel(data || []);
+    },
+    createPurchaseOrder: async (data: any) => {
+        const { items, id: _frontendId, ...poData } = data;
+        const payload = keysToSnake(poData);
+        
+        const { data: newPO, error } = await supabase.from('purchase_orders').insert([payload]).select().single();
+        if (error) throw new Error('Failed to create purchase order: ' + error.message);
+        
+        if (items && items.length > 0) {
+            const itemsPayload = items.map((item: any) => ({
+                ...keysToSnake(item),
+                purchase_order_id: newPO.id
+            }));
+            const { error: itemsError } = await supabase.from('purchase_order_items').insert(itemsPayload);
+            if (itemsError) throw new Error('Failed to create purchase order items: ' + itemsError.message);
+        }
+        return keysToCamel(newPO);
+    },
+    updatePurchaseOrder: async (id: number, data: any) => {
+        const { items, ...poData } = data;
+        const payload = keysToSnake(poData);
+        
+        const { data: updatedPO, error } = await supabase.from('purchase_orders').update(payload).eq('id', id).select().single();
+        if (error) throw new Error('Failed to update purchase order: ' + error.message);
+        
+        if (items) {
+            await supabase.from('purchase_order_items').delete().eq('purchase_order_id', id);
+            if (items.length > 0) {
+                const itemsPayload = items.map((item: any) => {
+                    const { id: _itemId, ...itemRest } = item;
+                    return { ...keysToSnake(itemRest), purchase_order_id: updatedPO.id };
+                });
+                const { error: itemsError } = await supabase.from('purchase_order_items').insert(itemsPayload);
+                if (itemsError) throw new Error('Failed to update purchase order items: ' + itemsError.message);
+            }
+        }
+        return keysToCamel(updatedPO);
+    },
     deletePurchaseOrder: async (id: number) => sbDelete('purchase_orders', id),
 
     // ── Accounts Payable ───────────────────────────────────────────────────
     getAccountsPayable: async () => sbGet('accounts_payable'),
-    createAccountPayable: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/accounts-payable`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create account payable');
-        return r.json();
-    },
-    updateAccountPayable: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/accounts-payable/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update account payable');
-        return r.json();
-    },
-    deleteAccountPayable: async (id: number) => {
-        const r = await fetchWithAuth(`${API_URL}/accounts-payable/${id}`, { method: 'DELETE' });
-        if (!r.ok) throw new Error('Failed to delete account payable');
-        return r.json();
-    },
+    createAccountPayable: async (data: any) => sbInsert('accounts_payable', data),
+    updateAccountPayable: async (id: number, data: any) => sbUpdate('accounts_payable', id, data),
+    deleteAccountPayable: async (id: number) => sbDelete('accounts_payable', id),
 
     // ── Goods Receipts ─────────────────────────────────────────────────────
-    getGoodsReceipts: async () => sbGet('goods_receipts'),
-    createGoodsReceipt: async (data: any) => sbInsert('goods_receipts', data),
-    updateGoodsReceipt: async (id: number, data: any) => sbUpdate('goods_receipts', id, data),
+    getGoodsReceipts: async () => {
+        const { data, error } = await supabase.from('goods_receipts').select('*, items:goods_receipt_items(*)').order('creation_date', { ascending: false });
+        if (error) throw new Error('Failed to fetch goods receipts: ' + error.message);
+        return keysToCamel(data || []);
+    },
+    createGoodsReceipt: async (data: any) => {
+        const { items, id: _frontendId, ...grData } = data;
+        const payload = keysToSnake(grData);
+        
+        const { data: newGR, error } = await supabase.from('goods_receipts').insert([payload]).select().single();
+        if (error) throw new Error('Failed to create goods receipt: ' + error.message);
+        
+        if (items && items.length > 0) {
+            const itemsPayload = items.map((item: any) => ({
+                ...keysToSnake(item),
+                goods_receipt_id: newGR.id
+            }));
+            const { error: itemsError } = await supabase.from('goods_receipt_items').insert(itemsPayload);
+            if (itemsError) throw new Error('Failed to create goods receipt items: ' + itemsError.message);
+        }
+        return keysToCamel(newGR);
+    },
+    updateGoodsReceipt: async (id: number, data: any) => {
+        const { items, ...grData } = data;
+        const payload = keysToSnake(grData);
+        
+        const { data: updatedGR, error } = await supabase.from('goods_receipts').update(payload).eq('id', id).select().single();
+        if (error) throw new Error('Failed to update goods receipt: ' + error.message);
+        
+        if (items) {
+            await supabase.from('goods_receipt_items').delete().eq('goods_receipt_id', id);
+            if (items.length > 0) {
+                const itemsPayload = items.map((item: any) => {
+                    const { id: _itemId, ...itemRest } = item;
+                    return { ...keysToSnake(itemRest), goods_receipt_id: updatedGR.id };
+                });
+                const { error: itemsError } = await supabase.from('goods_receipt_items').insert(itemsPayload);
+                if (itemsError) throw new Error('Failed to update goods receipt items: ' + itemsError.message);
+            }
+        }
+        return keysToCamel(updatedGR);
+    },
     deleteGoodsReceipt: async (id: number) => sbDelete('goods_receipts', id),
 
     // ── Credit Notes ───────────────────────────────────────────────────────
-    getCreditNotes: async () => sbGet('credit_notes'),
-    createCreditNote: async (data: any) => sbInsert('credit_notes', data),
-    updateCreditNote: async (id: number, data: any) => sbUpdate('credit_notes', id, data),
+    getCreditNotes: async () => {
+        const { data, error } = await supabase.from('credit_notes').select('*, items:credit_note_items(*)').order('creation_date', { ascending: false });
+        if (error) throw new Error('Failed to fetch credit notes: ' + error.message);
+        return keysToCamel(data || []);
+    },
+    createCreditNote: async (data: any) => {
+        const { items, id: _frontendId, ...cnData } = data;
+        const payload = keysToSnake(cnData);
+        
+        const { data: newCN, error } = await supabase.from('credit_notes').insert([payload]).select().single();
+        if (error) throw new Error('Failed to create credit note: ' + error.message);
+        
+        if (items && items.length > 0) {
+            const itemsPayload = items.map((item: any) => ({
+                ...keysToSnake(item),
+                credit_note_id: newCN.id
+            }));
+            const { error: itemsError } = await supabase.from('credit_note_items').insert(itemsPayload);
+            if (itemsError) throw new Error('Failed to create credit note items: ' + itemsError.message);
+        }
+        return keysToCamel(newCN);
+    },
+    updateCreditNote: async (id: number, data: any) => {
+        const { items, ...cnData } = data;
+        const payload = keysToSnake(cnData);
+        
+        const { data: updatedCN, error } = await supabase.from('credit_notes').update(payload).eq('id', id).select().single();
+        if (error) throw new Error('Failed to update credit note: ' + error.message);
+        
+        if (items) {
+            await supabase.from('credit_note_items').delete().eq('credit_note_id', id);
+            if (items.length > 0) {
+                const itemsPayload = items.map((item: any) => {
+                    const { id: _itemId, ...itemRest } = item;
+                    return { ...keysToSnake(itemRest), credit_note_id: updatedCN.id };
+                });
+                const { error: itemsError } = await supabase.from('credit_note_items').insert(itemsPayload);
+                if (itemsError) throw new Error('Failed to update credit note items: ' + itemsError.message);
+            }
+        }
+        return keysToCamel(updatedCN);
+    },
     deleteCreditNote: async (id: number) => sbDelete('credit_notes', id),
 
     // ── Subcontracts ───────────────────────────────────────────────────────
     getSubcontracts: async () => sbGet('subcontracts'),
-    createSubcontract: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/subcontracts`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create subcontract');
-        return r.json();
-    },
-    updateSubcontract: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/subcontracts/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update subcontract');
-        return r.json();
-    },
+    createSubcontract: async (data: any) => sbInsert('subcontracts', data),
+    updateSubcontract: async (id: number, data: any) => sbUpdate('subcontracts', id, data),
 
     // ── Suppliers ──────────────────────────────────────────────────────────
     getSuppliers: async () => {
@@ -348,8 +499,90 @@ export const apiService = {
         if (error) throw new Error('API [budgets]: Failed to fetch: ' + error.message);
         return keysToCamel(data || []);
     },
-    createBudget: async (data: any) => sbInsert('budgets', data),
-    updateBudget: async (id: number, data: any) => sbUpdate('budgets', id, data),
+    createBudget: async (data: any) => {
+        const { activities, prospect, prospectName, ...budgetData } = data;
+        const payload = keysToSnake(budgetData);
+
+        const { data: newBudget, error } = await supabase
+            .from('budgets')
+            .insert([payload])
+            .select()
+            .single();
+        if (error) throw new Error('Failed to create budget: ' + error.message);
+
+        if (activities && activities.length > 0) {
+            for (let i = 0; i < activities.length; i++) {
+                const { subActivities, id: _actId, budgetId, budget_id, ...activityGroup } = activities[i];
+                const actPayload = keysToSnake(activityGroup);
+                actPayload.budget_id = newBudget.id;
+                
+                const { data: newActivity, error: actError } = await supabase
+                    .from('budget_activities')
+                    .insert([actPayload])
+                    .select()
+                    .single();
+                if (actError) throw new Error('Failed to create budget activity: ' + actError.message);
+
+                if (subActivities && subActivities.length > 0) {
+                    const subsPayload = subActivities.map((sub: any) => {
+                        const { id: _subId, activityId, activity_id, ...subRest } = sub;
+                        return {
+                            ...keysToSnake(subRest),
+                            activity_id: newActivity.id
+                        };
+                    });
+                    const { error: subError } = await supabase.from('budget_sub_activities').insert(subsPayload);
+                    if (subError) throw new Error('Failed to create budget sub activities: ' + subError.message);
+                }
+            }
+        }
+        return keysToCamel(newBudget);
+    },
+    updateBudget: async (id: number, data: any) => {
+        const { activities, prospect, prospectName, ...budgetData } = data;
+        const payload = keysToSnake(budgetData);
+
+        const { data: updatedBudget, error } = await supabase
+            .from('budgets')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single();
+        if (error) throw new Error('Failed to update budget: ' + error.message);
+
+        if (activities) {
+            // Delete all activities (cascade deletes sub-activities)
+            await supabase.from('budget_activities').delete().eq('budget_id', id);
+
+            if (activities.length > 0) {
+                for (let i = 0; i < activities.length; i++) {
+                    const { subActivities, id: _actId, budgetId, budget_id, ...activityGroup } = activities[i];
+                    const actPayload = keysToSnake(activityGroup);
+                    actPayload.budget_id = updatedBudget.id;
+                    
+                    const { data: newActivity, error: actError } = await supabase
+                        .from('budget_activities')
+                        .insert([actPayload])
+                        .select()
+                        .single();
+                    if (actError) throw new Error('Failed to create budget activity: ' + actError.message);
+
+                    if (subActivities && subActivities.length > 0) {
+                        const subsPayload = subActivities.map((sub: any) => {
+                            const { id: _subId, activityId, activity_id, ...subRest } = sub;
+                            return {
+                                ...keysToSnake(subRest),
+                                activity_id: newActivity.id
+                            };
+                        });
+                        const { error: subError } = await supabase.from('budget_sub_activities').insert(subsPayload);
+                        if (subError) throw new Error('Failed to create budget sub activities: ' + subError.message);
+                    }
+                }
+            }
+        }
+        return keysToCamel(updatedBudget);
+    },
     deleteBudget: async (id: number) => sbDelete('budgets', id),
 
     // ── Materials ──────────────────────────────────────────────────────────
@@ -560,11 +793,7 @@ export const apiService = {
 
     // ── Bonos ──────────────────────────────────────────────────────────────
     getBonos: async () => sbGet('bonos'),
-    createBono: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/bonos`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create bono');
-        return r.json();
-    },
+    createBono: async (data: any) => sbInsert('bonos', data),
     procesarTransaccionEntregado: async (bonoId: number | null, bonoData: any, prospectData: any) => {
         const r = await fetchWithAuth(`${API_URL}/bonos/transaccion-entregado`, { 
             method: 'POST', 
@@ -576,16 +805,8 @@ export const apiService = {
         }
         return result;
     },
-    updateBono: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/bonos/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update bono');
-        return r.json();
-    },
-    deleteBono: async (id: number) => {
-        const r = await fetchWithAuth(`${API_URL}/bonos/${id}`, { method: 'DELETE' });
-        if (!r.ok) throw new Error('Failed to delete bono');
-        return r.json();
-    },
+    updateBono: async (id: number, data: any) => sbUpdate('bonos', id, data),
+    deleteBono: async (id: number) => sbDelete('bonos', id),
     /** Transacción atómica: En APC (Bono + Prospecto + Oferta) */
     procesarTransaccionEnAPC: async (bonoId: number | null, bonoData: any, prospectData: any, offerData?: any) => {
         const r = await fetchWithAuth(`${API_URL}/bonos/transaccion-en-apc`, {
@@ -609,25 +830,10 @@ export const apiService = {
 
     // ── Administrative Budgets & Expenses ──────────────────────────────────
     getAdministrativeBudgets: async () => sbGet('administrative_budgets'),
-    createAdministrativeBudget: async (data: any) => {
-        const r = await supabase.from('administrative_budgets').insert([keysToSnake(data)]).select().single().then(r => ({
-            ok: !r.error,
-            json: async () => keysToCamel(r.data)
-        }));
-        if (!r.ok) throw new Error('Failed to create administrative budget');
-        return r.json();
-    },
-    updateAdministrativeBudget: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/administrative-budgets/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update administrative budget');
-        return r.json();
-    },
+    createAdministrativeBudget: async (data: any) => sbInsert('administrative_budgets', data),
+    updateAdministrativeBudget: async (id: number, data: any) => sbUpdate('administrative_budgets', id, data),
     getAdministrativeExpenses: async () => sbGet('administrative_expenses'),
-    createAdministrativeExpense: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/administrative-expenses`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create administrative expense');
-        return r.json();
-    },
+    createAdministrativeExpense: async (data: any) => sbInsert('administrative_expenses', data),
 
     // ── Company Info ───────────────────────────────────────────────────────
     getCompanyInfo: async () => {
@@ -645,27 +851,11 @@ export const apiService = {
 
     // ── Pre-Operative Expenses ─────────────────────────────────────────────
     getPreOpRubros: async () => sbGet('pre_op_rubros'),
-    createPreOpRubro: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/pre-op-rubros`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create pre-op rubro');
-        return r.json();
-    },
-    updatePreOpRubro: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/pre-op-rubros/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update pre-op rubro');
-        return r.json();
-    },
+    createPreOpRubro: async (data: any) => sbInsert('pre_op_rubros', data),
+    updatePreOpRubro: async (id: number, data: any) => sbUpdate('pre_op_rubros', id, data),
     getPreOpExpenses: async () => sbGet('pre_op_expenses'),
-    createPreOpExpense: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/pre-op-expenses`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create pre-op expense');
-        return r.json();
-    },
-    updatePreOpExpense: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/pre-op-expenses/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update pre-op expense');
-        return r.json();
-    },
+    createPreOpExpense: async (data: any) => sbInsert('pre_op_expenses', data),
+    updatePreOpExpense: async (id: number, data: any) => sbUpdate('pre_op_expenses', id, data),
 
     // ── Document Notes ────────────────────────────────────────────────────
     getDocumentNotes: async (): Promise<{ [key: string]: string[] }> => {
