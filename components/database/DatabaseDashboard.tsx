@@ -119,8 +119,8 @@ const DatabaseDashboard: React.FC = () => {
             const newSupplier = await apiService.createSupplier(newSupplierData);
             setSuppliers(prev => [newSupplier, ...prev]);
             showToast('Proveedor agregado con éxito.', 'success');
-        } catch (error) {
-            console.error("Error adding supplier:", error);
+        } catch (error: any) {
+            console.error("Error detallado de Supabase:", error.message || error);
             showToast('Error al agregar proveedor.', 'error');
         }
     };
