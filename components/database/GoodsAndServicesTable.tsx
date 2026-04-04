@@ -4,9 +4,10 @@ import { ServiceItem } from '../../types';
 interface GoodsAndServicesTableProps {
   serviceItems: ServiceItem[];
   onDelete: (itemId: number) => void;
+  onEdit: (item: ServiceItem) => void;
 }
 
-export const GoodsAndServicesTable: React.FC<GoodsAndServicesTableProps> = ({ serviceItems, onDelete }) => {
+export const GoodsAndServicesTable: React.FC<GoodsAndServicesTableProps> = ({ serviceItems, onDelete, onEdit }) => {
     
   return (
     <div className="overflow-x-auto">
@@ -25,7 +26,7 @@ export const GoodsAndServicesTable: React.FC<GoodsAndServicesTableProps> = ({ se
               <td className="py-4 px-4 text-sm text-slate-600">{item.unit}</td>
               <td className="py-4 px-4 text-sm text-slate-600">
                 <div className="flex space-x-2">
-                    <button className="text-blue-600 hover:text-blue-900 font-medium">Editar</button>
+                    <button onClick={() => onEdit(item)} className="text-blue-600 hover:text-blue-900 font-medium">Editar</button>
                     <button onClick={() => onDelete(item.id)} className="text-red-600 hover:text-red-900 font-medium">Eliminar</button>
                 </div>
               </td>

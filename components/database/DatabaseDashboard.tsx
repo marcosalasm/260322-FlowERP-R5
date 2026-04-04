@@ -11,6 +11,7 @@ import { EditSupplierModal } from './EditSupplierModal';
 import { NewMaterialModal } from './NewMaterialModal';
 import { EditMaterialModal } from './EditMaterialModal';
 import { NewGoodAndServiceModal } from './NewGoodAndServiceModal';
+import { EditGoodAndServiceModal } from './EditGoodAndServiceModal';
 import { RecurringOrdersList } from './RecurringOrdersList';
 import { NewRecurringOrderModal } from './NewRecurringOrderModal';
 import { EditRecurringOrderModal } from './EditRecurringOrderModal';
@@ -65,6 +66,8 @@ const DatabaseDashboard: React.FC = () => {
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
     const [isGoodAndServiceModalOpen, setIsGoodAndServiceModalOpen] = useState(false);
+    const [isEditGoodAndServiceModalOpen, setIsEditGoodAndServiceModalOpen] = useState(false);
+    const [selectedGoodAndService, setSelectedGoodAndService] = useState<ServiceItem | null>(null);
     const [isLaborModalOpen, setIsLaborModalOpen] = useState(false);
     const [isEditLaborModalOpen, setIsEditLaborModalOpen] = useState(false);
     const [selectedLaborItem, setSelectedLaborItem] = useState<LaborItem | null>(null);
@@ -256,6 +259,24 @@ const DatabaseDashboard: React.FC = () => {
         } catch (error) {
             console.error("Error adding service item:", error);
             showToast('Error al agregar sub contrato.', 'error');
+        }
+    };
+
+    const handleEditGoodAndService = (item: ServiceItem) => {
+        setSelectedGoodAndService(item);
+        setIsEditGoodAndServiceModalOpen(true);
+    };
+
+    const handleUpdateGoodAndService = async (updatedItem: ServiceItem) => {
+        try {
+            const updated = await apiService.updateServiceItem(updatedItem.id, updatedItem);
+            setServiceItems(prev => prev.map(item => item.id === updated.id ? updated : item));
+            setIsEditGoodAndServiceModalOpen(false);
+            setSelectedGoodAndService(null);
+            showToast('Sub Contrato actualizado con éxito.', 'success');
+        } catch (error) {
+            console.error("Error updating service item:", error);
+            showToast('Error al actualizar sub contrato.', 'error');
         }
     };
 
@@ -512,7 +533,7 @@ const DatabaseDashboard: React.FC = () => {
             case 'inventory':
                 return can('database', 'inventory', 'view') ? <InventoryAdjustments /> : null;
             case 'goodsAndServices':
-                return <GoodsAndServicesTable serviceItems={serviceItems} onDelete={handleDeleteServiceItem} />;
+                return <GoodsAndServicesTable serviceItems={serviceItems} onEdit={handleEditGoodAndService} onDelete={handleDeleteServiceItem} />;
             case 'labor':
                 return <LaborTable laborItems={laborItems} onEdit={handleEditLaborItem} onDelete={handleDeleteLaborItem} />;
             case 'recurringOrders':
@@ -622,6 +643,16 @@ const DatabaseDashboard: React.FC = () => {
                 isOpen={isGoodAndServiceModalOpen}
                 onClose={() => setIsGoodAndServiceModalOpen(false)}
                 onSubmit={handleAddGoodAndService}
+            />
+
+            <EditGoodAndServiceModal
+                isOpen={isEditGoodAndServiceModalOpen}
+                onClose={() => {
+                    setSelectedGoodAndService(null);
+                    setIsEditGoodAndServiceModalOpen(false);
+                }}
+                onSubmit={handleUpdateGoodAndService}
+                serviceItem={selectedGoodAndService}
             />
 
             <NewLaborItemModal
