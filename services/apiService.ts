@@ -516,28 +516,29 @@ export const apiService = {
 
     // ── Labor Items (Mano de Obra) ─────────────────────────────────────────
     getLaborItems: async () => {
-        const r = await fetchWithAuth(`${API_URL}/labor-items`);
-        if (!r.ok) throw new Error('API [labor-items]: Failed to fetch');
-        const data = await r.json();
-        return (data ?? []).map((l: any) => ({
+        const { data, error } = await supabase.from('labor_items').select('*');
+        if (error) throw new Error('API [labor-items]: Failed to fetch');
+        return keysToCamel(data || []).map((l: any) => ({
             ...l,
-            hourlyRate: Number(l.hourlyRate ?? l.hourly_rate ?? 0),
+            hourlyRate: Number(l.hourlyRate ?? 0),
         }));
     },
     createLaborItem: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/labor-items`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create labor item');
-        return r.json();
+        const payload = keysToSnake(data);
+        const { data: result, error } = await supabase.from('labor_items').insert([payload]).select().single();
+        if (error) throw new Error('Failed to create labor item: ' + error.message);
+        return keysToCamel(result);
     },
     updateLaborItem: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/labor-items/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update labor item');
-        return r.json();
+        const payload = keysToSnake(data);
+        const { data: result, error } = await supabase.from('labor_items').update(payload).eq('id', id).select().single();
+        if (error) throw new Error('Failed to update labor item: ' + error.message);
+        return keysToCamel(result);
     },
     deleteLaborItem: async (id: number) => {
-        const r = await fetchWithAuth(`${API_URL}/labor-items/${id}`, { method: 'DELETE' });
-        if (!r.ok) throw new Error('Failed to delete labor item');
-        return r.json();
+        const { data: result, error } = await supabase.from('labor_items').delete().eq('id', id).select().single();
+        if (error) throw new Error('Failed to delete labor item: ' + error.message);
+        return keysToCamel(result);
     },
 
     // ── Recurring Order Templates ──────────────────────────────────────────
