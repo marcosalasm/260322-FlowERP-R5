@@ -164,7 +164,7 @@ const AddQuoteForm: React.FC<AddQuoteFormProps> = ({ request, suppliers, onSubmi
             pdfAttachmentName: localPdfFile?.name,
             pdfAttachmentBase64: localPdfBase64 || undefined,
             items: lineItems,
-            currency: initialData?.currency,
+            currency: initialData?.currency || 'CRC',
             history: [],
             aiValidation: initialData?.aiValidation,
         };

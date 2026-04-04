@@ -9,27 +9,14 @@ async function run() {
     await client.connect();
     console.log("Connected");
     
-    const queries = [
-      `ALTER TABLE quote_responses ADD COLUMN IF NOT EXISTS service_request_id INT4;`,
-      `ALTER TABLE quote_responses ADD COLUMN IF NOT EXISTS supplier_id INT4;`,
-      `ALTER TABLE quote_responses ADD COLUMN IF NOT EXISTS supplier_name TEXT;`,
-      `ALTER TABLE quote_responses ADD COLUMN IF NOT EXISTS quote_number TEXT;`,
-      `ALTER TABLE quote_responses ADD COLUMN IF NOT EXISTS delivery_days INT4;`,
-      `ALTER TABLE quote_responses ADD COLUMN IF NOT EXISTS payment_terms TEXT;`,
-      `ALTER TABLE quote_responses ADD COLUMN IF NOT EXISTS quality_notes TEXT;`,
-      `ALTER TABLE quote_responses ADD COLUMN IF NOT EXISTS total NUMERIC;`,
-      `ALTER TABLE quote_responses ADD COLUMN IF NOT EXISTS pdf_attachment_name TEXT;`,
-      `ALTER TABLE quote_responses ADD COLUMN IF NOT EXISTS pdf_attachment_base64 TEXT;`,
-      `ALTER TABLE quote_responses ADD COLUMN IF NOT EXISTS currency TEXT;`,
-      `NOTIFY pgrst, 'reload schema';`
-    ];
+    await client.query(`ALTER TABLE quote_responses ALTER COLUMN currency DROP NOT NULL;`);
+    console.log("Dropped NOT NULL constraint on currency");
 
-    for (let q of queries) {
-      await client.query(q);
-      console.log("Executed: ", q.substring(0, 50) + "...");
-    }
+    // Also just in case supplier_id had NOT NULL
+    await client.query(`ALTER TABLE quote_responses ALTER COLUMN supplier_id DROP NOT NULL;`);
     
-    console.log("All columns ensured and schema reloaded.");
+    await client.query(`NOTIFY pgrst, 'reload schema';`);
+    console.log("Reloaded schema");
     
   } catch(e) {
     console.error(e);
