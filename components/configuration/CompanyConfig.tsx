@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CompanyInfo } from '../../types';
 import { VAT_RATES } from '../../data/vatRates';
+import { supabase } from '../../lib/supabase';
 
 interface CompanyConfigProps {
     companyInfo: CompanyInfo;
@@ -10,6 +11,7 @@ interface CompanyConfigProps {
 export const CompanyConfig: React.FC<CompanyConfigProps> = ({ companyInfo, onSave }) => {
     const [info, setInfo] = useState<CompanyInfo>(companyInfo);
     const [isSaving, setIsSaving] = useState(false);
+    const [logoFile, setLogoFile] = useState<File | null>(null);
 
     useEffect(() => {
         setInfo(companyInfo);
@@ -36,6 +38,7 @@ export const CompanyConfig: React.FC<CompanyConfigProps> = ({ companyInfo, onSav
                 alert("El archivo es muy grande. El límite es 2MB.");
                 return;
             }
+            setLogoFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
                 setInfo({ ...info, logoBase64: reader.result as string });
@@ -45,13 +48,38 @@ export const CompanyConfig: React.FC<CompanyConfigProps> = ({ companyInfo, onSav
     };
 
     const handleRemoveLogo = () => {
+        setLogoFile(null);
         setInfo({ ...info, logoBase64: '' });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
-        await onSave(info);
+        let updatedInfo = { ...info };
+
+        if (logoFile) {
+            try {
+                const { data, error: uploadError } = await supabase.storage
+                    .from('logos')
+                    .upload(`logo-${Date.now()}.png`, logoFile);
+
+                if (uploadError) throw uploadError;
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('logos')
+                    .getPublicUrl(data.path);
+
+                updatedInfo.logoBase64 = publicUrl;
+            } catch (error) {
+                console.error("Error al subir logo al Storage:", error);
+                alert("Error al subir el logo.");
+                setIsSaving(false);
+                return;
+            }
+        }
+
+        await onSave(updatedInfo);
+        setLogoFile(null);
         setIsSaving(false);
     };
 

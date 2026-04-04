@@ -716,15 +716,16 @@ export const apiService = {
 
     // ── Company Info ───────────────────────────────────────────────────────
     getCompanyInfo: async () => {
-        const r = await fetchWithAuth(`${API_URL}/company-info`);
-        if (!r.ok) throw new Error('API [company-info]: Failed to fetch');
-        const data = await r.json();
-        return (data && Object.keys(data).length > 0) ? data : null;
+        const { data, error } = await supabase.from('company_info').select('*').limit(1).single();
+        if (error && error.code !== 'PGRST116') throw new Error('API [company-info]: Failed to fetch ' + error.message);
+        return data ? keysToCamel(data) : null;
     },
     updateCompanyInfo: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/company-info`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update company info');
-        return r.json();
+        const payload = keysToSnake(data);
+        const id = payload.id || 1;
+        const { data: result, error } = await supabase.from('company_info').upsert({ id, ...payload }).select().single();
+        if (error) throw new Error('Failed to update company info ' + error.message);
+        return keysToCamel(result);
     },
 
     // ── Pre-Operative Expenses ─────────────────────────────────────────────
