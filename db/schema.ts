@@ -83,6 +83,7 @@ export const budgetActivities = pgTable('budget_activities', {
     description: text('description').notNull(),
     quantity: numeric('quantity').notNull().default('0'),
     unit: text('unit').notNull().default('unidad'),
+    predeterminedActivityId: integer('predetermined_activity_id').references(() => predeterminedActivities.id, { onDelete: 'set null' })
 });
 
 // Budget Sub Activities
@@ -97,6 +98,7 @@ export const budgetSubActivities = pgTable('budget_sub_activities', {
     materialUnitCost: numeric('material_unit_cost').notNull().default('0'),
     laborUnitCost: numeric('labor_unit_cost').notNull().default('0'),
     subcontractUnitCost: numeric('subcontract_unit_cost').notNull().default('0'),
+    type: text('type'),
 });
 
 // Offers Table
