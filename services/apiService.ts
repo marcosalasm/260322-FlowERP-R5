@@ -564,32 +564,81 @@ export const apiService = {
 
     // ── Predetermined Activities ───────────────────────────────────────────
     getPredeterminedActivities: async () => {
-        const r = await fetchWithAuth(`${API_URL}/predetermined-activities`);
-        if (!r.ok) throw new Error('API [predetermined-activities]: Failed to fetch');
-        const data = await r.json();
-        return (data ?? []).map((a: any) => ({
+        const { data, error } = await supabase.from('predetermined_activities')
+            .select(`*, predetermined_sub_activities (*)`);
+        if (error) throw new Error('API [predetermined-activities]: Failed to fetch');
+        return (data || []).map((a: any) => ({
             ...a,
-            baseUnit: a.baseUnit ?? a.base_unit,
-            subActivities: (a.subActivities ?? []).map((sub: any) => ({
+            baseUnit: a.base_unit ?? a.baseUnit,
+            subActivities: (a.predetermined_sub_activities || []).map((sub: any) => ({
                 ...sub,
-                quantityPerBaseUnit: Number(sub.quantityPerBaseUnit ?? sub.quantity_per_base_unit ?? 0),
+                quantityPerBaseUnit: Number(sub.quantity_per_base_unit ?? sub.quantityPerBaseUnit ?? 0),
             })),
         }));
     },
     createPredeterminedActivity: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/predetermined-activities`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create predetermined activity');
-        return r.json();
+        const { subActivities, baseUnit, ...activityData } = data;
+        const payload = { ...activityData, base_unit: baseUnit ?? data.base_unit };
+        
+        const { data: result, error } = await supabase
+            .from('predetermined_activities')
+            .insert([payload])
+            .select()
+            .single();
+        if (error) throw new Error('Failed to create predetermined activity: ' + error.message);
+        
+        if (subActivities && subActivities.length > 0) {
+            const subsPayload = subActivities.map((sub: any) => ({
+                 predetermined_activity_id: result.id,
+                 item_number: sub.itemNumber ?? sub.item_number,
+                 type: sub.type,
+                 description: sub.description,
+                 quantity_per_base_unit: sub.quantityPerBaseUnit ?? sub.quantity_per_base_unit ?? 0,
+                 unit: sub.unit,
+                 notes: sub.notes
+            }));
+            const { error: subError } = await supabase.from('predetermined_sub_activities').insert(subsPayload);
+            if (subError) throw new Error('Failed to create predetermined sub activities: ' + subError.message);
+        }
+        
+        return { ...result, subActivities: subActivities || [] };
     },
     updatePredeterminedActivity: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/predetermined-activities/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update predetermined activity');
-        return r.json();
+        const { subActivities, baseUnit, ...activityData } = data;
+        const payload = { ...activityData, base_unit: baseUnit ?? data.base_unit };
+        
+        const { data: result, error } = await supabase
+            .from('predetermined_activities')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single();
+        if (error) throw new Error('Failed to update predetermined activity: ' + error.message);
+
+        // Replace sub activities: delete old ones and insert new ones
+        await supabase.from('predetermined_sub_activities').delete().eq('predetermined_activity_id', id);
+        
+        if (subActivities && subActivities.length > 0) {
+            const subsPayload = subActivities.map((sub: any) => ({
+                 predetermined_activity_id: id,
+                 item_number: sub.itemNumber ?? sub.item_number,
+                 type: sub.type,
+                 description: sub.description,
+                 quantity_per_base_unit: sub.quantityPerBaseUnit ?? sub.quantity_per_base_unit ?? 0,
+                 unit: sub.unit,
+                 notes: sub.notes
+            }));
+            const { error: subError } = await supabase.from('predetermined_sub_activities').insert(subsPayload);
+            if (subError) throw new Error('Failed to update predetermined sub activities: ' + subError.message);
+        }
+        
+        return { ...result, subActivities: subActivities || [] };
     },
     deletePredeterminedActivity: async (id: number) => {
-        const r = await fetchWithAuth(`${API_URL}/predetermined-activities/${id}`, { method: 'DELETE' });
-        if (!r.ok) throw new Error('Failed to delete predetermined activity');
-        return r.json();
+        // Cascade delete will handle predetermined_sub_activities
+        const { data: result, error } = await supabase.from('predetermined_activities').delete().eq('id', id).select().single();
+        if (error) throw new Error('Failed to delete predetermined activity: ' + error.message);
+        return result;
     },
 
     // ── Bonos ──────────────────────────────────────────────────────────────

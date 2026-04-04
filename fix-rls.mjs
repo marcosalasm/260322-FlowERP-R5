@@ -42,7 +42,8 @@ async function run() {
       'budgets',
       'labor_items',
       'recurring_order_templates',
-      'predetermined_activities'
+      'predetermined_activities',
+      'predetermined_sub_activities'
     ];
 
     for (const table of tables) {
