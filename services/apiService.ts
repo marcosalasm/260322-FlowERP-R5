@@ -46,6 +46,24 @@ const sbGet = async (table: string, extraQuery?: (q: any) => any) => {
     return keysToCamel(data || []);
 };
 
+const sbInsert = async (table: string, payload: any) => {
+    const { data, error } = await supabase.from(table).insert(keysToSnake(payload)).select().single();
+    if (error) throw new Error(`Failed to create ${table}: ` + error.message);
+    return keysToCamel(data);
+};
+
+const sbUpdate = async (table: string, id: number, payload: any) => {
+    const { data, error } = await supabase.from(table).update(keysToSnake(payload)).eq('id', id).select().single();
+    if (error) throw new Error(`Failed to update ${table}: ` + error.message);
+    return keysToCamel(data);
+};
+
+const sbDelete = async (table: string, id: number) => {
+    const { data, error } = await supabase.from(table).delete().eq('id', id).select().single();
+    if (error) throw new Error(`Failed to delete ${table}: ` + error.message);
+    return keysToCamel(data);
+};
+
 export const apiService = {
 
     // ── Users ──────────────────────────────────────────────────────────────
@@ -196,22 +214,10 @@ export const apiService = {
     },
 
     // ── Service Requests ───────────────────────────────────────────────────
-    getServiceRequests: async () => {
-        const r = await fetchWithAuth(`${API_URL}/service-requests`);
-        if (!r.ok) throw new Error('API [service-requests]: Failed to fetch');
-        const data = await r.json();
-        return (data ?? []).map((sr: any) => ({ ...sr, items: sr.items ?? [] }));
-    },
-    createServiceRequest: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/service-requests`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) { const t = await r.text(); throw new Error(`Failed to create service request: ${t}`); }
-        return r.json();
-    },
-    updateServiceRequest: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/service-requests/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update service request');
-        return r.json();
-    },
+    getServiceRequests: async () => sbGet('service_requests'),
+    createServiceRequest: async (data: any) => sbInsert('service_requests', data),
+    updateServiceRequest: async (id: number, data: any) => sbUpdate('service_requests', id, data),
+    deleteServiceRequest: async (id: number) => sbDelete('service_requests', id),
     generateServiceRequestPdf: async (id: number, companyInfo: any) => {
         const r = await fetchWithAuth(`${API_URL}/service-requests/${id}/pdf`, { 
             method: 'POST', 
@@ -225,40 +231,16 @@ export const apiService = {
     },
 
     // ── Quote Responses ────────────────────────────────────────────────────
-    getQuoteResponses: async () => {
-        const r = await fetchWithAuth(`${API_URL}/quote-responses`);
-        if (!r.ok) throw new Error('API [quote-responses]: Failed to fetch');
-        const data = await r.json();
-        return (data ?? []).map((qr: any) => ({ ...qr, items: qr.items ?? [] }));
-    },
-    createQuoteResponse: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/quote-responses`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create quote response');
-        return r.json();
-    },
-    updateQuoteResponse: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/quote-responses/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update quote response');
-        return r.json();
-    },
+    getQuoteResponses: async () => sbGet('quote_responses'),
+    createQuoteResponse: async (data: any) => sbInsert('quote_responses', data),
+    updateQuoteResponse: async (id: number, data: any) => sbUpdate('quote_responses', id, data),
+    deleteQuoteResponse: async (id: number) => sbDelete('quote_responses', id),
 
     // ── Purchase Orders ────────────────────────────────────────────────────
-    getPurchaseOrders: async () => {
-        const r = await fetchWithAuth(`${API_URL}/purchase-orders`);
-        if (!r.ok) throw new Error('API [purchase-orders]: Failed to fetch');
-        const data = await r.json();
-        return (data ?? []).map((po: any) => ({ ...po, items: po.items ?? [] }));
-    },
-    createPurchaseOrder: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/purchase-orders`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create purchase order');
-        return r.json();
-    },
-    updatePurchaseOrder: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/purchase-orders/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Failed to update purchase order'); }
-        return r.json();
-    },
+    getPurchaseOrders: async () => sbGet('purchase_orders'),
+    createPurchaseOrder: async (data: any) => sbInsert('purchase_orders', data),
+    updatePurchaseOrder: async (id: number, data: any) => sbUpdate('purchase_orders', id, data),
+    deletePurchaseOrder: async (id: number) => sbDelete('purchase_orders', id),
 
     // ── Accounts Payable ───────────────────────────────────────────────────
     getAccountsPayable: async () => sbGet('accounts_payable'),
@@ -279,45 +261,16 @@ export const apiService = {
     },
 
     // ── Goods Receipts ─────────────────────────────────────────────────────
-    getGoodsReceipts: async () => {
-        const r = await fetchWithAuth(`${API_URL}/goods-receipts`);
-        if (!r.ok) throw new Error('API [goods-receipts]: Failed to fetch');
-        const data = await r.json();
-        return (data ?? []).map((gr: any) => ({ ...gr, items: gr.items ?? [] }));
-    },
-    createGoodsReceipt: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/goods-receipts`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create goods receipt');
-        return r.json();
-    },
-    updateGoodsReceipt: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/goods-receipts/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update goods receipt');
-        return r.json();
-    },
-    deleteGoodsReceipt: async (id: number) => {
-        const r = await fetchWithAuth(`${API_URL}/goods-receipts/${id}`, { method: 'DELETE' });
-        if (!r.ok) throw new Error('Failed to delete goods receipt');
-        return r.json();
-    },
+    getGoodsReceipts: async () => sbGet('goods_receipts'),
+    createGoodsReceipt: async (data: any) => sbInsert('goods_receipts', data),
+    updateGoodsReceipt: async (id: number, data: any) => sbUpdate('goods_receipts', id, data),
+    deleteGoodsReceipt: async (id: number) => sbDelete('goods_receipts', id),
 
     // ── Credit Notes ───────────────────────────────────────────────────────
-    getCreditNotes: async () => {
-        const r = await fetchWithAuth(`${API_URL}/credit-notes`);
-        if (!r.ok) throw new Error('API [credit-notes]: Failed to fetch');
-        const data = await r.json();
-        return (data ?? []).map((cn: any) => ({ ...cn, items: cn.items ?? [] }));
-    },
-    createCreditNote: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/credit-notes`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create credit note');
-        return r.json();
-    },
-    updateCreditNote: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/credit-notes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update credit note');
-        return r.json();
-    },
+    getCreditNotes: async () => sbGet('credit_notes'),
+    createCreditNote: async (data: any) => sbInsert('credit_notes', data),
+    updateCreditNote: async (id: number, data: any) => sbUpdate('credit_notes', id, data),
+    deleteCreditNote: async (id: number) => sbDelete('credit_notes', id),
 
     // ── Subcontracts ───────────────────────────────────────────────────────
     getSubcontracts: async () => sbGet('subcontracts'),
@@ -378,90 +331,26 @@ export const apiService = {
     },
 
     // ── Offers ─────────────────────────────────────────────────────────────
-    getOffers: async () => {
-        const r = await fetchWithAuth(`${API_URL}/offers`);
-        if (!r.ok) throw new Error('API [offers]: Failed to fetch');
-        const data = await r.json();
-        return (data ?? []).map((o: any) => ({
-            ...o,
-            amount: Number(o.amount ?? 0),
-            budget: Number(o.budget ?? 0),
-            budgetAmount: Number(o.budgetAmount ?? o.budget_amount ?? 0),
-        }));
-    },
-    createOffer: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/offers`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create offer');
-        const o = await r.json();
-        return { ...o, amount: Number(o.amount), budget: Number(o.budget), budgetAmount: Number(o.budgetAmount) };
-    },
-    updateOffer: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/offers/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update offer');
-        const o = await r.json();
-        return { ...o, amount: Number(o.amount), budget: Number(o.budget), budgetAmount: Number(o.budgetAmount) };
-    },
-    deleteOffer: async (id: number) => {
-        const r = await fetchWithAuth(`${API_URL}/offers/${id}`, { method: 'DELETE' });
-        if (!r.ok) throw new Error('Failed to delete offer');
-        return r.json();
-    },
+    getOffers: async () => sbGet('offers', q => q.order('id', {ascending: false})).then(data => data.map((o: any) => ({ ...o, amount: Number(o.amount ?? 0), budget: Number(o.budget ?? 0), budgetAmount: Number(o.budgetAmount ?? 0) }))),
+    createOffer: async (data: any) => sbInsert('offers', data),
+    updateOffer: async (id: number, data: any) => sbUpdate('offers', id, data),
+    deleteOffer: async (id: number) => sbDelete('offers', id),
 
     // ── Change Orders ──────────────────────────────────────────────────────
-    getChangeOrders: async () => {
-        const r = await fetchWithAuth(`${API_URL}/change-orders`);
-        if (!r.ok) throw new Error('API [change-orders]: Failed to fetch');
-        const data = await r.json();
-        return (data ?? []).map((co: any) => ({
-            ...co,
-            amountImpact: Number(co.amountImpact ?? co.amount_impact ?? 0),
-            budgetImpact: Number(co.budgetImpact ?? co.budget_impact ?? 0),
-        }));
-    },
-    createChangeOrder: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/change-orders`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create change order');
-        const co = await r.json();
-        return { ...co, amountImpact: Number(co.amountImpact), budgetImpact: Number(co.budgetImpact) };
-    },
-    updateChangeOrder: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/change-orders/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update change order');
-        const co = await r.json();
-        return { ...co, amountImpact: Number(co.amountImpact), budgetImpact: Number(co.budgetImpact) };
-    },
+    getChangeOrders: async () => sbGet('change_orders').then(data => data.map((co: any) => ({...co, amountImpact: Number(co.amountImpact ?? 0), budgetImpact: Number(co.budgetImpact ?? 0)}))),
+    createChangeOrder: async (data: any) => sbInsert('change_orders', data),
+    updateChangeOrder: async (id: number, data: any) => sbUpdate('change_orders', id, data),
+    deleteChangeOrder: async (id: number) => sbDelete('change_orders', id),
 
     // ── Budgets ────────────────────────────────────────────────────────────
     getBudgets: async () => {
-        const r = await fetchWithAuth(`${API_URL}/budgets`);
-        if (!r.ok) throw new Error('API [budgets]: Failed to fetch');
-        const data = await r.json();
-        return (data ?? []).map((b: any) => ({
-            ...b,
-            activities: (b.activities ?? []).map((act: any) => ({
-                ...act,
-                subActivities: act.subActivities ?? [],
-            })),
-        }));
+        const { data, error } = await supabase.from('budgets').select('*, activities:budget_activities(*, subActivities:budget_sub_activities(*))');
+        if (error) throw new Error('API [budgets]: Failed to fetch: ' + error.message);
+        return keysToCamel(data || []);
     },
-    createBudget: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/budgets`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) {
-            const errorText = await r.text();
-            throw new Error(`Failed to create budget: ${r.status} ${r.statusText} - ${errorText}`);
-        }
-        return r.json();
-    },
-    updateBudget: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/budgets/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update budget');
-        return r.json();
-    },
-    deleteBudget: async (id: number) => {
-        const r = await fetchWithAuth(`${API_URL}/budgets/${id}`, { method: 'DELETE' });
-        if (!r.ok) throw new Error('Failed to delete budget');
-        return r.json();
-    },
+    createBudget: async (data: any) => sbInsert('budgets', data),
+    updateBudget: async (id: number, data: any) => sbUpdate('budgets', id, data),
+    deleteBudget: async (id: number) => sbDelete('budgets', id),
 
     // ── Materials ──────────────────────────────────────────────────────────
     getMaterials: async () => {
@@ -594,7 +483,7 @@ export const apiService = {
     getPredeterminedActivities: async () => {
         const { data, error } = await supabase.from('predetermined_activities')
             .select(`*, predetermined_sub_activities (*)`);
-        if (error) throw new Error('API [predetermined-activities]: Failed to fetch');
+        if (error) throw new Error('API [predetermined-activities]: Failed to fetch: ' + error.message);
         return (data || []).map((a: any) => ({
             ...a,
             baseUnit: a.base_unit ?? a.baseUnit,
