@@ -482,9 +482,38 @@ export const apiService = {
     },
 
     // ── Offers ─────────────────────────────────────────────────────────────
-    getOffers: async () => sbGet('offers', q => q.order('id', {ascending: false})).then(data => data.map((o: any) => ({ ...o, amount: Number(o.amount ?? 0), budget: Number(o.budget ?? 0), budgetAmount: Number(o.budgetAmount ?? 0) }))),
-    createOffer: async (data: any) => sbInsert('offers', data),
-    updateOffer: async (id: number, data: any) => sbUpdate('offers', id, data),
+    getOffers: async () => {
+        const { data, error } = await supabase.from('offers').select('*, prospect:prospects(*)').order('id', { ascending: false });
+        if (error) throw new Error('API [offers]: Failed to fetch');
+        const camelData = keysToCamel(data || []);
+        return camelData.map((o: any) => ({
+            ...o,
+            amount: Number(o.amount ?? 0),
+            budget: Number(o.budgetAmount ?? 0),
+            budgetAmount: Number(o.budgetAmount ?? 0),
+            prospectName: o.prospect?.company || o.prospect?.name || 'Prospecto desconocido'
+        }));
+    },
+    createOffer: async (data: any) => {
+        const { id, budget, prospectName, prospect, createdAt, ...rest } = data;
+        const payload = { ...rest, budgetAmount: budget || rest.budgetAmount || 0 };
+        const result = await sbInsert('offers', payload);
+        return {
+            ...result,
+            budget: result.budgetAmount,
+            prospectName: prospectName || prospect?.company || prospect?.name || 'N/A'
+        };
+    },
+    updateOffer: async (id: number, data: any) => {
+        const { id: _id, budget, prospectName, prospect, createdAt, ...rest } = data;
+        const payload = { ...rest, budgetAmount: budget || rest.budgetAmount || 0 };
+        const result = await sbUpdate('offers', id, payload);
+        return {
+            ...result,
+            budget: result.budgetAmount,
+            prospectName: prospectName || prospect?.company || prospect?.name || 'N/A'
+        };
+    },
     deleteOffer: async (id: number) => sbDelete('offers', id),
 
     // ── Change Orders ──────────────────────────────────────────────────────
