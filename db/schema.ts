@@ -66,6 +66,7 @@ export const budgets = pgTable('budgets', {
     indirectCostTotal: numeric('indirect_cost_total').notNull().default('0'),
     total: numeric('total').notNull().default('0'),
     currency: text('currency').notNull().default('CRC'),
+    countryCode: text('country_code').notNull().default('CR'),
     taxRate: numeric('tax_rate').notNull().default('0'),
     finalTotal: numeric('final_total').notNull().default('0'),
     status: text('status').notNull().default('Draft'),
