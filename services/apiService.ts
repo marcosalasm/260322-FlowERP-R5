@@ -333,23 +333,48 @@ export const apiService = {
     },
 
     // ── Suppliers ──────────────────────────────────────────────────────────
-    getSuppliers: async () => sbGet('suppliers'),
+    getSuppliers: async () => {
+        const data = await sbGet('suppliers');
+        return data.map((camelResult: any) => {
+            if ('bankAccount_2' in camelResult) { camelResult.bankAccount2 = camelResult.bankAccount_2; delete camelResult.bankAccount_2; }
+            if ('bankAccount_2Details' in camelResult) { camelResult.bankAccount2Details = camelResult.bankAccount_2Details; delete camelResult.bankAccount_2Details; }
+            return camelResult;
+        });
+    },
     createSupplier: async (data: any) => {
         const payload = keysToSnake(data);
+        if ('bank_account2' in payload) { payload.bank_account_2 = payload.bank_account2; delete payload.bank_account2; }
+        if ('bank_account2_details' in payload) { payload.bank_account_2_details = payload.bank_account2_details; delete payload.bank_account2_details; }
+        
         const { data: result, error } = await supabase.from('suppliers').insert([payload]).select().single();
         if (error) throw new Error('Failed to create supplier: ' + error.message);
-        return keysToCamel(result);
+        
+        const camelResult = keysToCamel(result);
+        if ('bankAccount_2' in camelResult) { camelResult.bankAccount2 = camelResult.bankAccount_2; delete camelResult.bankAccount_2; }
+        if ('bankAccount_2Details' in camelResult) { camelResult.bankAccount2Details = camelResult.bankAccount_2Details; delete camelResult.bankAccount_2Details; }
+        return camelResult;
     },
     updateSupplier: async (id: number, data: any) => {
         const payload = keysToSnake(data);
+        if ('bank_account2' in payload) { payload.bank_account_2 = payload.bank_account2; delete payload.bank_account2; }
+        if ('bank_account2_details' in payload) { payload.bank_account_2_details = payload.bank_account2_details; delete payload.bank_account2_details; }
+
         const { data: result, error } = await supabase.from('suppliers').update(payload).eq('id', id).select().single();
         if (error) throw new Error('Failed to update supplier: ' + error.message);
-        return keysToCamel(result);
+        
+        const camelResult = keysToCamel(result);
+        if ('bankAccount_2' in camelResult) { camelResult.bankAccount2 = camelResult.bankAccount_2; delete camelResult.bankAccount_2; }
+        if ('bankAccount_2Details' in camelResult) { camelResult.bankAccount2Details = camelResult.bankAccount_2Details; delete camelResult.bankAccount_2Details; }
+        return camelResult;
     },
     deleteSupplier: async (id: number) => {
         const { data: result, error } = await supabase.from('suppliers').delete().eq('id', id).select().single();
         if (error) throw new Error('Failed to delete supplier: ' + error.message);
-        return keysToCamel(result);
+        
+        const camelResult = keysToCamel(result);
+        if ('bankAccount_2' in camelResult) { camelResult.bankAccount2 = camelResult.bankAccount_2; delete camelResult.bankAccount_2; }
+        if ('bankAccount_2Details' in camelResult) { camelResult.bankAccount2Details = camelResult.bankAccount_2Details; delete camelResult.bankAccount_2Details; }
+        return camelResult;
     },
 
     // ── Offers ─────────────────────────────────────────────────────────────
