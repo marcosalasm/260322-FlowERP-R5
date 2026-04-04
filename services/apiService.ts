@@ -335,19 +335,21 @@ export const apiService = {
     // ── Suppliers ──────────────────────────────────────────────────────────
     getSuppliers: async () => sbGet('suppliers'),
     createSupplier: async (data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/suppliers`, { method: 'POST', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to create supplier');
-        return r.json();
+        const payload = keysToSnake(data);
+        const { data: result, error } = await supabase.from('suppliers').insert([payload]).select().single();
+        if (error) throw new Error('Failed to create supplier: ' + error.message);
+        return keysToCamel(result);
     },
     updateSupplier: async (id: number, data: any) => {
-        const r = await fetchWithAuth(`${API_URL}/suppliers/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (!r.ok) throw new Error('Failed to update supplier');
-        return r.json();
+        const payload = keysToSnake(data);
+        const { data: result, error } = await supabase.from('suppliers').update(payload).eq('id', id).select().single();
+        if (error) throw new Error('Failed to update supplier: ' + error.message);
+        return keysToCamel(result);
     },
     deleteSupplier: async (id: number) => {
-        const r = await fetchWithAuth(`${API_URL}/suppliers/${id}`, { method: 'DELETE' });
-        if (!r.ok) throw new Error('Failed to delete supplier');
-        return r.json();
+        const { data: result, error } = await supabase.from('suppliers').delete().eq('id', id).select().single();
+        if (error) throw new Error('Failed to delete supplier: ' + error.message);
+        return keysToCamel(result);
     },
 
     // ── Offers ─────────────────────────────────────────────────────────────
