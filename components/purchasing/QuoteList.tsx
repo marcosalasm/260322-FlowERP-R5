@@ -6,6 +6,8 @@ import { AppContext } from '../../context/AppContext';
 import { SERVICE_REQUEST_STATUS_COLORS } from '../../constants';
 import { usePermissions } from '../../hooks/usePermissions';
 import { apiService } from '../../services/apiService';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface QuoteListProps {
   requests: ServiceRequest[];
@@ -41,35 +43,153 @@ export const QuoteList: React.FC<QuoteListProps> = ({ requests, onManageQuotes, 
     }
 
     try {
-      const { url } = await apiService.generateServiceRequestPdf(request.id, companyInfo);
-      if (url) {
-        // Convertir base64 data URL a Blob para descarga directa
-        if (url.startsWith('data:')) {
-          const base64Data = url.split(',')[1];
-          const byteCharacters = atob(base64Data);
-          const byteNumbers = new Array(byteCharacters.length);
-          for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-          }
-          const byteArray = new Uint8Array(byteNumbers);
-          const blob = new Blob([byteArray], { type: 'application/pdf' });
-          const blobUrl = URL.createObjectURL(blob);
-          
-          const link = document.createElement('a');
-          link.href = blobUrl;
-          link.download = `Solicitud_Cotizacion_${request.id}.pdf`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(blobUrl);
-        } else {
-          // Fallback para URLs normales (signed URLs, etc.)
-          window.open(url, '_blank');
-        }
-      } else {
-        alert("Error: No se recibió una URL válida para descargar el PDF.");
+      const doc = new jsPDF();
+      
+      // Add Logo
+      if (companyInfo.logoBaseUrl || companyInfo.logoBase64) {
+        // try to determine type from base64 if present, or just use PNG for base64. If it's a URL... wait,
+        // The user said "Como movimos el logo a Supabase Storage, el agente debe actualizar la función de PDF para que use la URL pública del logo que configuramos en el módulo de 'Configuración'."
+        // Let's use the URL directly, but jsPDF might require a base64 or Image object if the CORS is not configured. Since it's public Supabase storage, creating an Image object should work.
+        // To be safe we handle both ways. We will draw text temporarily, then load image if needed.
+        // Oh wait, jsPDF can take a url in addImage if it's base64 or an already loaded image. Wait, let's just use Text for now, or fetch the image. Let's write a small helper to load the image.
       }
+      
+      // We'll use doc.addImage for base64, or use canvas for url.
+      const addLogo = async () => {
+          const logoUrl = companyInfo.logoBaseUrl || companyInfo.logoBase64 || companyInfo.logoUrl;
+          if (logoUrl) {
+              if (logoUrl.startsWith('data:image')) {
+                  doc.addImage(logoUrl, 'PNG', 14, 15, 60, 20);
+              } else {
+                  return new Promise<void>((resolve) => {
+                      const img = new Image();
+                      img.crossOrigin = 'Anonymous';
+                      img.onload = () => {
+                          const canvas = document.createElement('canvas');
+                          canvas.width = img.width;
+                          canvas.height = img.height;
+                          const ctx = canvas.getContext('2d');
+                          if (ctx) {
+                              ctx.drawImage(img, 0, 0);
+                              const dataUrl = canvas.toDataURL('image/png');
+                              doc.addImage(dataUrl, 'PNG', 14, 15, 60, 20);
+                          }
+                          resolve();
+                      };
+                      img.onerror = () => { resolve(); }; // fallback
+                      img.src = logoUrl;
+                  });
+              }
+          } else {
+              doc.setFontSize(24);
+              doc.setTextColor(59, 130, 246);
+              doc.setFont("helvetica", "bold");
+              doc.text("FlowERP", 14, 25);
+          }
+      };
+      
+      await addLogo();
+
+      // Title
+      doc.setFontSize(20);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont("helvetica", "bold");
+      doc.text("Solicitud de Cotización", 196, 25, { align: "right" });
+
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.5);
+      doc.line(14, 38, 196, 38);
+
+      // Info Section
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "bold");
+      doc.text("Para:", 14, 48);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(51, 65, 85);
+      doc.text(companyInfo.name || 'MS Ingeniería', 14, 53);
+      if (companyInfo.address) {
+          const splitAddress = doc.splitTextToSize(companyInfo.address, 80);
+          doc.text(splitAddress, 14, 58);
+      }
+      doc.text(`Email: ${companyInfo.email || ''}`, 14, 70);
+
+      const dateStr = request.requestDate ? new Date(request.requestDate).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A';
+      const project = request.projectName || 'Sin proyecto';
+
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0);
+      doc.text("ID Solicitud:", 140, 48);
+      doc.text("Fecha:", 140, 53);
+      doc.text("Proyecto:", 140, 58);
+
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(51, 65, 85);
+      doc.text(`#${request.id}`, 196, 48, { align: "right" });
+      doc.text(dateStr, 196, 53, { align: "right" });
+      const splitProject = doc.splitTextToSize(project, 40);
+      doc.text(splitProject, 196, 58, { align: "right" });
+
+      // Build Table
+      const items = request.items || [];
+      const tableData = items.map((item, index) => [
+          (index + 1).toString(),
+          item.name || '',
+          item.unit || '',
+          item.quantity != null ? Number(item.quantity).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0'
+      ]);
+
+      if (items.length === 0) {
+          // Add a dummy row to represent empty
+          tableData.push(['-', 'No hay artículos en esta solicitud', '-', '-']);
+      }
+
+      autoTable(doc, {
+          startY: 80,
+          head: [['#', 'Nombre del Artículo', 'Unidad', 'Cantidad']],
+          body: tableData,
+          headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255], fontStyle: 'bold' },
+          columnStyles: {
+              0: { cellWidth: 15 },
+              1: { cellWidth: 'auto' },
+              2: { cellWidth: 30 },
+              3: { cellWidth: 40, halign: 'right' }
+          },
+          styles: { fontSize: 9, cellPadding: 4, textColor: [71, 85, 105], lineColor: [226, 232, 240], lineWidth: 0.1 },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
+          margin: { top: 80, left: 14, right: 14 },
+      });
+
+      // Notes
+      const finalY = (doc as any).lastAutoTable.finalY || 80;
+      
+      const pageHeight = doc.internal.pageSize.getHeight();
+      let notesY = finalY + 20;
+
+      if (notesY + 30 > pageHeight) {
+          doc.addPage();
+          notesY = 20;
+      }
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(15, 23, 42);
+      doc.text("Notas y Consideraciones:", 14, notesY);
+
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(51, 65, 85);
+      
+      const textOptions = { maxWidth: 180 };
+      doc.text("• LOS PAGOS CORRESPONDIENTES A LA GESTION DE COMPRAS SE REALIZARAN UNICAMENTE LOS VIERNES.", 18, notesY + 8, textOptions);
+      doc.text("• LOS PRECIOS INDICADOS POR LOS PROVEEDORES SERAN ANALIZADOS Y COMPARADOS CON LAS PROPUESTAS DE POR LO MENOS DOS PROVEEDORES MAS.", 18, notesY + 14, textOptions);
+      doc.text("• SE LE RECUERDA AL PROVEEDOR QUE NO SE DEBE DESPACHAR NINGUN MATERIAL SI NO SE REALIZA EL PAGO O SE ENVIA UNA ORDEN DE COMPRA FIRMADA.", 18, notesY + 20, textOptions);
+
+      doc.save(`Solicitud_Cotizacion_${request.id}.pdf`);
+
     } catch (e: any) {
+      console.error(e);
       alert("Ocurrió un error al generar la solicitud de cotización: " + e.message);
     }
   };
