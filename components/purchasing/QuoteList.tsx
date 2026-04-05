@@ -6,6 +6,7 @@ import { AppContext } from '../../context/AppContext';
 import { SERVICE_REQUEST_STATUS_COLORS } from '../../constants';
 import { usePermissions } from '../../hooks/usePermissions';
 import { apiService } from '../../services/apiService';
+import { supabase } from '../../lib/supabase';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -132,8 +133,19 @@ export const QuoteList: React.FC<QuoteListProps> = ({ requests, onManageQuotes, 
       doc.text(splitProject, 196, 58, { align: "right" });
 
       // Build Table
-      const items = request.items || [];
-      const tableData = items.map((item, index) => [
+      const { data: fetchedItems, error: itemsError } = await supabase
+        .from('service_request_items')
+        .select('*')
+        .eq('service_request_id', request.id)
+        .order('id', { ascending: true });
+
+      if (itemsError) {
+        console.error("Error fetching items for PDF:", itemsError);
+      }
+
+      // Convert fetched data to the format we need, falling back to local list
+      const items = fetchedItems || request.items || [];
+      const tableData = items.map((item: any, index: number) => [
           (index + 1).toString(),
           item.name || '',
           item.unit || '',
