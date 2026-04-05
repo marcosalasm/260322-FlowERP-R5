@@ -48,7 +48,7 @@ export const ProjectMaterialsModal: React.FC<ProjectMaterialsModalProps> = ({ is
 
         const initialMap = new Map<string, { unit: string, qty: number }>();
         if (initialBudget) {
-            initialBudget.activities.forEach(act => act.subActivities.forEach(sub => {
+            initialBudget.activities?.forEach(act => act.subActivities?.forEach(sub => {
                 if (!sub.description || !sub.unit) return;
                 // Normalizamos a Mayúsculas para evitar duplicados por case-sensitivity
                 const normalizedName = sub.description.trim().toUpperCase();
@@ -66,7 +66,7 @@ export const ProjectMaterialsModal: React.FC<ProjectMaterialsModalProps> = ({ is
             const budget = budgets.find(b => b.id === co.budgetId);
             if (!budget) return;
             const multiplier = co.changeType === 'Crédito' ? -1 : 1;
-            budget.activities.forEach(act => act.subActivities.forEach(sub => {
+            budget.activities?.forEach(act => act.subActivities?.forEach(sub => {
                 if (!sub.description || !sub.unit) return;
                 const normalizedName = sub.description.trim().toUpperCase();
                 const normalizedUnit = sub.unit.trim().toUpperCase();
@@ -80,7 +80,7 @@ export const ProjectMaterialsModal: React.FC<ProjectMaterialsModalProps> = ({ is
 
         const purchasedMap = new Map<string, { unit: string, qty: number }>();
         committedPOs.forEach(po => {
-            po.items.forEach(item => {
+            po.items?.forEach(item => {
                 if (!item.name || !item.unit) return;
                 const normalizedName = item.name.trim().toUpperCase();
                 const normalizedUnit = item.unit.trim().toUpperCase();

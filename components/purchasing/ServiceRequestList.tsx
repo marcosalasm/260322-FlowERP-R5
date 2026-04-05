@@ -63,13 +63,13 @@ export const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests
     if (!offer) return { itemDetails: [], totalAdditionalCost: 0 };
 
     // 1. Build a consolidated list of all budgeted materials for the project.
-    const consolidatedMaterialsMap = new Map<string, { unit: string; quantity: number }>();
+    const consolidatedMaterialsMap = new Map<string, { unit: string; quantity: number, originalName: string }>();
     if (offer.budgetId) {
       const initialBudget = budgets.find(b => b.id === offer.budgetId);
-      initialBudget?.activities.forEach(act => act.subActivities.forEach(sub => {
+      initialBudget?.activities?.forEach(act => act.subActivities?.forEach(sub => {
         if (!sub.description) return;
-        const key = `${sub.description.trim()}|${sub.unit.trim()}`;
-        const existing = consolidatedMaterialsMap.get(key) || { unit: sub.unit, quantity: 0 };
+        const key = `${sub.description.trim().toLowerCase()}|${sub.unit.trim().toLowerCase()}`;
+        const existing = consolidatedMaterialsMap.get(key) || { unit: sub.unit, quantity: 0, originalName: sub.description };
         existing.quantity += Number(sub.quantity) || 0;
         consolidatedMaterialsMap.set(key, existing);
       }));
@@ -80,10 +80,10 @@ export const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests
       const budget = budgets.find(b => b.id === co.budgetId);
       if (!budget) return;
       const multiplier = co.changeType === 'Crédito' ? -1 : 1;
-      budget.activities.forEach(act => act.subActivities.forEach(sub => {
+      budget.activities?.forEach(act => act.subActivities?.forEach(sub => {
         if (!sub.description) return;
-        const key = `${sub.description.trim()}|${sub.unit.trim()}`;
-        const existing = consolidatedMaterialsMap.get(key) || { unit: sub.unit, quantity: 0 };
+        const key = `${sub.description.trim().toLowerCase()}|${sub.unit.trim().toLowerCase()}`;
+        const existing = consolidatedMaterialsMap.get(key) || { unit: sub.unit, quantity: 0, originalName: sub.description };
         existing.quantity += (Number(sub.quantity) || 0) * multiplier;
         consolidatedMaterialsMap.set(key, existing);
       }));
@@ -95,9 +95,10 @@ export const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests
     allServiceRequests
       .filter(req => req.id !== request.id && req.projectId === request.projectId && req.status !== ServiceRequestStatus.Rejected)
       .forEach(req => {
-        req.items.forEach(item => {
-          if (!item.isUnforeseen) {
-            previouslyRequestedQuantities.set(item.name, (previouslyRequestedQuantities.get(item.name) || 0) + item.quantity);
+        req.items?.forEach(item => {
+          if (!item.isUnforeseen && item.name) {
+            const key = item.name.trim().toLowerCase();
+            previouslyRequestedQuantities.set(key, (previouslyRequestedQuantities.get(key) || 0) + item.quantity);
           }
         });
       });
@@ -113,7 +114,8 @@ export const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests
         };
       }
 
-      const budgetItem = consolidatedMaterials.find(m => m.name === item.name);
+      const itemNameKey = (item.name || "").trim().toLowerCase();
+      const budgetItem = consolidatedMaterials.find(m => m.name === itemNameKey);
       if (!budgetItem) {
         return {
           ...item,
@@ -124,7 +126,7 @@ export const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests
       }
 
       const budgetedQty = budgetItem.quantity;
-      const previouslyReq = previouslyRequestedQuantities.get(item.name) || 0;
+      const previouslyReq = previouslyRequestedQuantities.get(itemNameKey) || 0;
       const availableQty = budgetedQty - previouslyReq;
 
       if (item.quantity <= availableQty) {

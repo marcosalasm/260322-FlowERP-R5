@@ -124,6 +124,7 @@ const PurchasingDashboard: React.FC = () => {
         } catch (error) {
             console.error('Error adding request:', error);
             showToast('Error al crear la solicitud.', 'error');
+            throw error; // Re-throw to inform the modal
         }
     };
 

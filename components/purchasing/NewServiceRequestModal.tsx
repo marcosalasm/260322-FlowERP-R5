@@ -13,7 +13,7 @@ const getNextId = (items: any[]) => (items.length > 0 ? Math.max(...items.map(i 
 interface NewServiceRequestModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (newRequestData: any) => void;
+    onSubmit: (newRequestData: any) => void | Promise<void>;
     projects: Project[];
     currentUser: User;
     materials: Material[];
@@ -85,9 +85,9 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
 
         if (selectedOffer.budgetId) {
             const initialBudget = budgets.find(b => b.id === selectedOffer.budgetId);
-            if (initialBudget) {
+            if (initialBudget && initialBudget.activities) {
                 initialBudget.activities.forEach(activity => {
-                    activity.subActivities.forEach(sub => {
+                    activity.subActivities?.forEach(sub => {
                         if (!sub.description) return;
                         const key = `${sub.description.trim().toLowerCase()}|${sub.unit.trim().toLowerCase()}`;
                         const existing = materialsMap.get(key) || { unit: sub.unit, quantity: 0 };
@@ -105,12 +105,12 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
         approvedChangeOrders.forEach(co => {
             if (!co.budgetId) return;
             const budget = budgets.find(b => b.id === co.budgetId);
-            if (!budget) return;
+            if (!budget || !budget.activities) return;
 
             const multiplier = co.changeType === 'Crédito' ? -1 : 1;
 
             budget.activities.forEach(activity => {
-                activity.subActivities.forEach(sub => {
+                activity.subActivities?.forEach(sub => {
                     if (!sub.description) return;
                     const key = `${sub.description.trim().toLowerCase()}|${sub.unit.trim().toLowerCase()}`;
                     const existing = materialsMap.get(key) || { unit: sub.unit, quantity: 0 };
@@ -136,7 +136,7 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
             .filter(req => req.projectId === associatedProject.id &&
                 [ServiceRequestStatus.PendingApproval, ServiceRequestStatus.PendingGMApproval, ServiceRequestStatus.InQuotation, ServiceRequestStatus.QuotationReady].includes(req.status))
             .forEach(req => {
-                req.items.forEach(item => {
+                req.items?.forEach(item => {
                     const key = item.name.trim().toLowerCase();
                     quantityMap.set(key, (quantityMap.get(key) || 0) + Number(item.quantity || 0));
                 });
@@ -147,7 +147,7 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
             .filter(po => po.projectId === associatedProject.id &&
                 po.status !== POStatus.Rejected && po.status !== POStatus.Cancelled)
             .forEach(po => {
-                po.items.forEach(item => {
+                po.items?.forEach(item => {
                     const key = item.name.trim().toLowerCase();
                     quantityMap.set(key, (quantityMap.get(key) || 0) + Number(item.quantity || 0));
                 });
@@ -255,8 +255,14 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validación de seguridad para evitar crashes
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            alert('Error: La lista de artículos no fue inicializada correctamente.');
+            return;
+        }
 
         const finalItems = items
             .map(i => ({
@@ -346,9 +352,15 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
             prospectId: isPreOp ? Number(selectedProspectId) : undefined,
         };
 
-        onSubmit(newRequestData);
-        onClose();
-        setIsSubmitting(false);
+        try {
+            await onSubmit(newRequestData);
+            onClose();
+        } catch (error) {
+            console.error(error);
+            alert('Ocurrió un error al crear la solicitud. Intente de nuevo.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     if (!isOpen) return null;
