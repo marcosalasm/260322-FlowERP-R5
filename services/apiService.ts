@@ -308,7 +308,8 @@ export const apiService = {
                 const { id: _itemId, ...restItem } = item;
                 return {
                     ...keysToSnake(restItem),
-                    purchase_order_id: newPO.id
+                    purchase_order_id: newPO.id,
+                    project_id: newPO.project_id
                 };
             });
             const { error: itemsError } = await supabase.from('purchase_order_items').insert(itemsPayload);
