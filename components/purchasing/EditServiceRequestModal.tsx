@@ -150,7 +150,7 @@ export const EditServiceRequestModal: React.FC<EditServiceRequestModalProps> = (
         if (request && isOpen) {
             setProjectId(String(request.projectId));
             setRequiredDate(request.requiredDate);
-            setItems(request.items.map(item => ({ ...item })));
+            setItems(request?.items?.map(item => ({ ...item })) || []);
             // Disable editing if it's already far in the process
             setIsLocked(![ServiceRequestStatus.PendingApproval, ServiceRequestStatus.PendingGMApproval, ServiceRequestStatus.Rejected].includes(request.status));
         }

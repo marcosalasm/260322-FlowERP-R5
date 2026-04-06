@@ -111,7 +111,7 @@ export const ComparativeChartModal: React.FC<ComparativeChartModalProps> = ({ is
 
     if (!isOpen || !request) return null;
 
-    const allItemsPriced = quotesForRequest.every(q => q.items.length === request.items.length);
+    const allItemsPriced = quotesForRequest?.every(q => q.items?.length === request?.items?.length);
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={onClose}>

@@ -8,7 +8,7 @@ type EditableItem = Omit<ServiceRequestItem, 'quantity'> & {
     quantity: number | string;
 };
 
-const getNextId = (items: any[]) => (items.length > 0 ? Math.max(...items.map(i => i.id)) : 0) + 1;
+const getNextId = (items: any[]) => ((items?.length || 0) > 0 ? Math.max(...items.map(i => i.id)) : 0) + 1;
 
 interface NewServiceRequestModalProps {
     isOpen: boolean;
@@ -236,7 +236,7 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
     const handleLoadTemplate = (templateId: number) => {
         const template = recurringOrderTemplates.find(t => t.id === templateId);
         if (template) {
-            const newItems: EditableItem[] = template.items.map((item, index) => {
+            const newItems: EditableItem[] = template.items?.map((item, index) => {
                 const normalizedValue = item.name.trim().toLowerCase();
                 const budgetItem = consolidatedMaterials.find(m => m.name.toLowerCase() === normalizedValue);
                 const isUnforeseen = isPreOp || (isBudgetControlled && !budgetItem);
@@ -584,7 +584,7 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
                                 >
                                     <div className="flex justify-between items-center">
                                         <span className="font-bold text-slate-700 group-hover:text-primary">{template.name}</span>
-                                        <span className="text-xs font-semibold bg-slate-100 px-2 py-0.5 rounded text-slate-500">{template.items.length} items</span>
+                                        <span className="text-xs font-semibold bg-slate-100 px-2 py-0.5 rounded text-slate-500">{template.items?.length || 0} items</span>
                                     </div>
                                     <p className="text-xs text-slate-500 mt-1">{template.description || 'Sin descripción.'}</p>
                                 </button>
