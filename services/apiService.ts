@@ -38,12 +38,47 @@ const keysToSnake = (o: any): any => {
     return o;
 };
 
+const fetchAllPaginated = async (table: string, selectQuery: string = '*', orderCb?: (q: any) => any) => {
+    let allData: any[] = [];
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+        let q = supabase.from(table).select(selectQuery);
+        if (orderCb) q = orderCb(q);
+        const { data, error } = await q.range(from, from + 999);
+        if (error) throw new Error(`API [${table}]: Failed to fetch: ` + error.message);
+        
+        allData = [...allData, ...(data || [])];
+        if (data && data.length === 1000) {
+            from += 1000;
+        } else {
+            hasMore = false;
+        }
+    }
+    return allData;
+};
+
 const sbGet = async (table: string, extraQuery?: (q: any) => any) => {
-    let q = supabase.from(table).select('*');
-    if (extraQuery) q = extraQuery(q);
-    const { data, error } = await q;
-    if (error) throw new Error(`API [${table}]: Failed to fetch: ` + error.message);
-    return keysToCamel(data || []);
+    let allData: any[] = [];
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+        let q = supabase.from(table).select('*');
+        if (extraQuery) q = extraQuery(q);
+        const { data, error } = await q.range(from, from + 999);
+        if (error) throw new Error(`API [${table}]: Failed to fetch: ` + error.message);
+        
+        allData = [...allData, ...(data || [])];
+        if (data && data.length === 1000) {
+            from += 1000;
+        } else {
+            hasMore = false;
+        }
+    }
+    
+    return keysToCamel(allData);
 };
 
 const sbInsert = async (table: string, payload: any) => {
@@ -109,8 +144,7 @@ export const apiService = {
 
     // ── Prospects ──────────────────────────────────────────────────────────
     getProspects: async () => {
-        const { data, error } = await supabase.from('prospects').select('*').order('created_at', { ascending: false });
-        if (error) throw new Error(error.message);
+        const data = await fetchAllPaginated('prospects', '*', q => q.order('created_at', { ascending: false }));
         return (data || []).map((p: any) => ({
             ...p,
             nextFollowUpDate: p.next_follow_up_date,
@@ -191,8 +225,7 @@ export const apiService = {
 
     // ── Service Requests ───────────────────────────────────────────────────
     getServiceRequests: async () => {
-        const { data, error } = await supabase.from('service_requests').select('*, items:service_request_items(*)').order('created_at', { ascending: false });
-        if (error) throw new Error('Failed to fetch service requests: ' + error.message);
+        const data = await fetchAllPaginated('service_requests', '*, items:service_request_items(*)', q => q.order('created_at', { ascending: false }));
         return keysToCamel(data || []);
     },
     createServiceRequest: async (data: any) => {
@@ -247,8 +280,7 @@ export const apiService = {
 
     // ── Quote Responses ────────────────────────────────────────────────────
     getQuoteResponses: async () => {
-        const { data, error } = await supabase.from('quote_responses').select('*, items:quote_response_items(*)').order('created_at', { ascending: false });
-        if (error) throw new Error('Failed to fetch quote responses: ' + error.message);
+        const data = await fetchAllPaginated('quote_responses', '*, items:quote_response_items(*)', q => q.order('created_at', { ascending: false }));
         return keysToCamel(data || []);
     },
     createQuoteResponse: async (data: any) => {
@@ -292,8 +324,7 @@ export const apiService = {
 
     // ── Purchase Orders ────────────────────────────────────────────────────
     getPurchaseOrders: async () => {
-        const { data, error } = await supabase.from('purchase_orders').select('*, items:purchase_order_items(*)').order('created_at', { ascending: false });
-        if (error) throw new Error('Failed to fetch purchase orders: ' + error.message);
+        const data = await fetchAllPaginated('purchase_orders', '*, items:purchase_order_items(*)', q => q.order('created_at', { ascending: false }));
         return keysToCamel(data || []);
     },
     createPurchaseOrder: async (data: any) => {
@@ -347,8 +378,7 @@ export const apiService = {
 
     // ── Goods Receipts ─────────────────────────────────────────────────────
     getGoodsReceipts: async () => {
-        const { data, error } = await supabase.from('goods_receipts').select('*, items:goods_receipt_items(*)').order('creation_date', { ascending: false });
-        if (error) throw new Error('Failed to fetch goods receipts: ' + error.message);
+        const data = await fetchAllPaginated('goods_receipts', '*, items:goods_receipt_items(*)', q => q.order('creation_date', { ascending: false }));
         return keysToCamel(data || []);
     },
     createGoodsReceipt: async (data: any) => {
@@ -392,8 +422,7 @@ export const apiService = {
 
     // ── Credit Notes ───────────────────────────────────────────────────────
     getCreditNotes: async () => {
-        const { data, error } = await supabase.from('credit_notes').select('*, items:credit_note_items(*)').order('creation_date', { ascending: false });
-        if (error) throw new Error('Failed to fetch credit notes: ' + error.message);
+        const data = await fetchAllPaginated('credit_notes', '*, items:credit_note_items(*)', q => q.order('creation_date', { ascending: false }));
         return keysToCamel(data || []);
     },
     createCreditNote: async (data: any) => {
@@ -487,8 +516,7 @@ export const apiService = {
 
     // ── Offers ─────────────────────────────────────────────────────────────
     getOffers: async () => {
-        const { data, error } = await supabase.from('offers').select('*, prospect:prospects(*)').order('id', { ascending: false });
-        if (error) throw new Error('API [offers]: Failed to fetch');
+        const data = await fetchAllPaginated('offers', '*, prospect:prospects(*)', q => q.order('id', { ascending: false }));
         const camelData = keysToCamel(data || []);
         return camelData.map((o: any) => ({
             ...o,
@@ -528,8 +556,7 @@ export const apiService = {
 
     // ── Budgets ────────────────────────────────────────────────────────────
     getBudgets: async () => {
-        const { data, error } = await supabase.from('budgets').select('*, activities:budget_activities(*, subActivities:budget_sub_activities(*))');
-        if (error) throw new Error('API [budgets]: Failed to fetch: ' + error.message);
+        const data = await fetchAllPaginated('budgets', '*, activities:budget_activities(*, subActivities:budget_sub_activities(*))');
         return keysToCamel(data || []);
     },
     createBudget: async (data: any) => {
@@ -620,8 +647,7 @@ export const apiService = {
 
     // ── Materials ──────────────────────────────────────────────────────────
     getMaterials: async () => {
-        const { data, error } = await supabase.from('materials').select('*');
-        if (error) throw new Error('API [materials]: Failed to fetch');
+        const data = await fetchAllPaginated('materials');
         const arr = data || [];
         arr.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
         return arr.map((m: any) => ({
@@ -667,8 +693,7 @@ export const apiService = {
 
     // ── Service Items (Sub Contratos) ──────────────────────────────────────
     getServiceItems: async () => {
-        const { data, error } = await supabase.from('service_items').select('*');
-        if (error) throw new Error('API [service-items]: Failed to fetch');
+        const data = await fetchAllPaginated('service_items');
         return (data || []).map((s: any) => ({
             ...s,
             unitCost: Number(s.unitCost ?? s.unit_cost ?? 0),
@@ -696,8 +721,7 @@ export const apiService = {
 
     // ── Labor Items (Mano de Obra) ─────────────────────────────────────────
     getLaborItems: async () => {
-        const { data, error } = await supabase.from('labor_items').select('*');
-        if (error) throw new Error('API [labor-items]: Failed to fetch');
+        const data = await fetchAllPaginated('labor_items');
         return keysToCamel(data || []).map((l: any) => ({
             ...l,
             hourlyRate: Number(l.hourlyRate ?? 0),
@@ -723,8 +747,7 @@ export const apiService = {
 
     // ── Recurring Order Templates ──────────────────────────────────────────
     getRecurringOrderTemplates: async () => {
-        const { data, error } = await supabase.from('recurring_order_templates').select('*');
-        if (error) throw new Error('API [recurring-order-templates]: Failed to fetch');
+        const data = await fetchAllPaginated('recurring_order_templates');
         return (data || []).map((t: any) => ({ ...t, items: t.items ?? [] }));
     },
     createRecurringOrderTemplate: async (data: any) => {
@@ -747,9 +770,7 @@ export const apiService = {
 
     // ── Predetermined Activities ───────────────────────────────────────────
     getPredeterminedActivities: async () => {
-        const { data, error } = await supabase.from('predetermined_activities')
-            .select(`*, predetermined_sub_activities (*)`);
-        if (error) throw new Error('API [predetermined-activities]: Failed to fetch: ' + error.message);
+        const data = await fetchAllPaginated('predetermined_activities', '*, predetermined_sub_activities (*)');
         return (data || []).map((a: any) => ({
             ...a,
             baseUnit: a.base_unit ?? a.baseUnit,
