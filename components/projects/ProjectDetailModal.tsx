@@ -77,7 +77,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
 
     const { user, roles, serviceRequests, preOpExpenses, preOpRubros } = appContext!;
 
-    const userRoleNames = useMemo(() => new Set(user.roleIds.map(id => roles.find(r => r.id === id)?.name)), [user, roles]);
+    const userRoleNames = useMemo(() => new Set(user.roleIds.map(id => (roles || []).find(r => r.id === id)?.name)), [user, roles]);
     const canChangeStatus = useMemo(() =>
         (userRoleNames.has('Director de proyectos') || userRoleNames.has('Director financiero') || userRoleNames.has('Gerente General')) && project.status !== ProjectStatus.Completed
         , [userRoleNames, project.status]);

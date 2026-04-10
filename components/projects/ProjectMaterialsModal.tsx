@@ -32,16 +32,16 @@ export const ProjectMaterialsModal: React.FC<ProjectMaterialsModalProps> = ({ is
     const consolidatedData = useMemo((): ConsolidatedMaterial[] => {
         if (!project) return [];
 
-        const offer = offers.find(o => o.id === project.offerId);
+        const offer = (offers || []).find(o => o.id === project.offerId);
         if (!offer) return [];
 
-        const initialBudget = budgets.find(b => b.id === offer.budgetId);
+        const initialBudget = (budgets || []).find(b => b.id === offer.budgetId);
 
-        const approvedCOs = changeOrders.filter(co => 
+        const approvedCOs = (changeOrders || []).filter(co => 
             co.offerId === offer.id && co.status === ChangeOrderStatus.Approved
         );
 
-        const committedPOs = purchaseOrders.filter(po => 
+        const committedPOs = (purchaseOrders || []).filter(po => 
             po.projectId === project.id &&
             [POStatus.Approved, POStatus.Issued, POStatus.PartiallyReceived, POStatus.FullyReceived].includes(po.status)
         );
@@ -63,7 +63,7 @@ export const ProjectMaterialsModal: React.FC<ProjectMaterialsModalProps> = ({ is
 
         const changeMap = new Map<string, { unit: string, qty: number }>();
         approvedCOs.forEach(co => {
-            const budget = budgets.find(b => b.id === co.budgetId);
+            const budget = (budgets || []).find(b => b.id === co.budgetId);
             if (!budget) return;
             const multiplier = co.changeType === 'Crédito' ? -1 : 1;
             budget.activities?.forEach(act => act.subActivities?.forEach(sub => {

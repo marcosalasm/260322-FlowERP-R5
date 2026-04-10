@@ -93,7 +93,7 @@ export const UserManagement: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                         {users.map((user) => {
-                            const userRoleNames = user.roleIds.map(id => roles.find(r => r.id === id)?.name).filter(Boolean).join(', ');
+                            const userRoleNames = user.roleIds.map(id => (roles || []).find(r => r.id === id)?.name).filter(Boolean).join(', ');
                             return (
                                 <tr key={user.id} className="hover:bg-slate-50">
                                     <td className="py-4 px-4 text-sm font-medium text-slate-900">{user.name}</td>

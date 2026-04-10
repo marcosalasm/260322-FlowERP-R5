@@ -30,16 +30,16 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
     isOpen,
     onClose,
     onSubmit,
-    projects,
+    projects = [],
     currentUser,
-    materials,
-    serviceItems,
-    recurringOrderTemplates,
-    budgets,
-    offers,
-    changeOrders,
-    allServiceRequests,
-    purchaseOrders
+    materials = [],
+    serviceItems = [],
+    recurringOrderTemplates = [],
+    budgets = [],
+    offers = [],
+    changeOrders = [],
+    allServiceRequests = [],
+    purchaseOrders = []
 }) => {
     const appContext = useContext(AppContext);
     const roles = appContext?.roles || [];
@@ -54,29 +54,29 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
     const [isWarranty, setIsWarranty] = useState(false);
     const [showRecurringModal, setShowRecurringModal] = useState(false);
 
-    const combinedItemCatalog = useMemo(() => [...materials, ...serviceItems], [materials, serviceItems]);
+    const combinedItemCatalog = useMemo(() => [...(materials || []), ...(serviceItems || [])], [materials, serviceItems]);
 
     const approvedOffers = useMemo(() => {
-        const allApproved = offers.filter(o => o.status === OfferStatus.Aprobacion);
+        const allApproved = (offers || []).filter(o => o.status === OfferStatus.Aprobacion);
         if (isWarranty) {
             return allApproved;
         }
-        const completedProjectIds = new Set(projects.filter(p => p.status === ProjectStatus.Completed).map(p => p.id));
+        const completedProjectIds = new Set((projects || []).filter(p => p.status === ProjectStatus.Completed).map(p => p.id));
         return allApproved.filter(o => {
-            const projectForOffer = projects.find(p => p.offerId === o.id);
+            const projectForOffer = (projects || []).find(p => p.offerId === o.id);
             return !projectForOffer || !completedProjectIds.has(projectForOffer.id);
         });
     }, [offers, projects, isWarranty]);
 
     // --- Derived State from Selected Offer ---
-    const selectedOffer = useMemo(() => approvedOffers.find(o => o.id === Number(selectedOfferId)), [selectedOfferId, approvedOffers]);
-    const associatedProject = useMemo(() => projects.find(p => p.offerId === selectedOffer?.id), [selectedOffer, projects]);
+    const selectedOffer = useMemo(() => (approvedOffers || []).find(o => o.id === Number(selectedOfferId)), [selectedOfferId, approvedOffers]);
+    const associatedProject = useMemo(() => (projects || []).find(p => p.offerId === selectedOffer?.id), [selectedOffer, projects]);
 
     const isBudgetControlled = useMemo(() => {
         if (isPreOp) return false;
         if (!selectedOffer) return false;
         if (selectedOffer.budgetId) return true;
-        return changeOrders.some(co => co.offerId === selectedOffer.id && co.status === ChangeOrderStatus.Approved && co.budgetId);
+        return (changeOrders || []).some(co => co.offerId === selectedOffer.id && co.status === ChangeOrderStatus.Approved && co.budgetId);
     }, [selectedOffer, changeOrders, isPreOp]);
 
     const consolidatedMaterials = useMemo(() => {
@@ -84,7 +84,7 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
         const materialsMap = new Map<string, { unit: string; quantity: number }>();
 
         if (selectedOffer.budgetId) {
-            const initialBudget = budgets.find(b => b.id === selectedOffer.budgetId);
+            const initialBudget = (budgets || []).find(b => b.id === selectedOffer.budgetId);
             if (initialBudget && initialBudget.activities) {
                 initialBudget.activities.forEach(activity => {
                     activity.subActivities?.forEach(sub => {
@@ -98,13 +98,13 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
             }
         }
 
-        const approvedChangeOrders = changeOrders.filter(
+        const approvedChangeOrders = (changeOrders || []).filter(
             co => co.offerId === selectedOffer.id && co.status === ChangeOrderStatus.Approved
         );
 
         approvedChangeOrders.forEach(co => {
             if (!co.budgetId) return;
-            const budget = budgets.find(b => b.id === co.budgetId);
+            const budget = (budgets || []).find(b => b.id === co.budgetId);
             if (!budget || !budget.activities) return;
 
             const multiplier = co.changeType === 'Crédito' ? -1 : 1;
@@ -132,7 +132,7 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
         const quantityMap = new Map<string, number>();
 
         // 1. Pending Service Requests
-        allServiceRequests
+        (allServiceRequests || [])
             .filter(req => req.projectId === associatedProject.id &&
                 [ServiceRequestStatus.PendingApproval, ServiceRequestStatus.PendingGMApproval, ServiceRequestStatus.InQuotation, ServiceRequestStatus.QuotationReady].includes(req.status))
             .forEach(req => {
@@ -143,7 +143,7 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
             });
 
         // 2. Existing Purchase Orders (approved, issued, received, etc.)
-        purchaseOrders
+        (purchaseOrders || [])
             .filter(po => po.projectId === associatedProject.id &&
                 po.status !== POStatus.Rejected && po.status !== POStatus.Cancelled)
             .forEach(po => {
@@ -193,8 +193,8 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
                 const normalizedValue = String(value).trim().toLowerCase();
 
                 // Prioritize checking if it's in the project's budget
-                const budgetItem = consolidatedMaterials.find(m => m.name.toLowerCase() === normalizedValue);
-                const catalogItem = combinedItemCatalog.find(catItem => catItem.name.toLowerCase() === normalizedValue);
+                const budgetItem = (consolidatedMaterials || []).find(m => m.name.toLowerCase() === normalizedValue);
+                const catalogItem = (combinedItemCatalog || []).find(catItem => catItem.name.toLowerCase() === normalizedValue);
 
                 const isNowUnforeseen = isPreOp || (isBudgetControlled && value && !budgetItem);
                 currentItem.isUnforeseen = isNowUnforeseen;
@@ -234,11 +234,11 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
     };
 
     const handleLoadTemplate = (templateId: number) => {
-        const template = recurringOrderTemplates.find(t => t.id === templateId);
+        const template = (recurringOrderTemplates || []).find(t => t.id === templateId);
         if (template) {
             const newItems: EditableItem[] = template.items?.map((item, index) => {
                 const normalizedValue = item.name.trim().toLowerCase();
-                const budgetItem = consolidatedMaterials.find(m => m.name.toLowerCase() === normalizedValue);
+                const budgetItem = (consolidatedMaterials || []).find(m => m.name.toLowerCase() === normalizedValue);
                 const isUnforeseen = isPreOp || (isBudgetControlled && !budgetItem);
                 return {
                     id: Date.now() + index,
@@ -247,7 +247,7 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
                     unit: budgetItem ? budgetItem.unit : item.unit,
                     isUnforeseen,
                     unforeseenJustification: isUnforeseen ? `Pedido recurrente: ${template.name}` : undefined,
-                    estimatedUnitCost: isUnforeseen ? (combinedItemCatalog.find(c => c.name.toLowerCase() === normalizedValue)?.unitCost || 0) : undefined
+                    estimatedUnitCost: isUnforeseen ? ((combinedItemCatalog || []).find(c => c.name.toLowerCase() === normalizedValue)?.unitCost || 0) : undefined
                 };
             });
             setItems(newItems);
@@ -304,7 +304,7 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
         if (!isPreOp && isBudgetControlled && associatedProject) {
             for (const item of finalItems) {
                 const normalizedName = item.name.toLowerCase();
-                const budgetItem = consolidatedMaterials.find(m => m.name.toLowerCase() === normalizedName);
+                const budgetItem = (consolidatedMaterials || []).find(m => m.name.toLowerCase() === normalizedName);
                 const budgetedQty = budgetItem?.quantity || 0;
 
                 const previouslyReq = previouslyRequestedQuantities.get(normalizedName) || 0;
@@ -318,7 +318,7 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
                         requiresGMApproval = true;
                     }
 
-                    const estimatedUnitCost = item.estimatedUnitCost || combinedItemCatalog.find(c => c.name.toLowerCase() === normalizedName)?.unitCost || 0;
+                    const estimatedUnitCost = item.estimatedUnitCost || (combinedItemCatalog || []).find(c => c.name.toLowerCase() === normalizedName)?.unitCost || 0;
                     totalAdditionalCost += overageQty * estimatedUnitCost;
                 }
             }
@@ -340,7 +340,7 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
 
         const newRequestData = {
             projectId: isPreOp ? null : associatedProject!.id,
-            projectName: isPreOp ? `GASTO PRE-OP: ${prospects.find(p => p.id === Number(selectedProspectId))?.company}` : associatedProject!.name,
+            projectName: isPreOp ? `GASTO PRE-OP: ${(prospects || []).find(p => p.id === Number(selectedProspectId))?.company}` : associatedProject!.name,
             requestDate: new Date().toISOString().split('T')[0],
             requester: currentUser.name,
             requesterId: currentUser.id,
@@ -398,8 +398,8 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
                                             <label htmlFor="offer-selection" className="block text-sm font-bold text-slate-700 mb-1">Oferta Aprobada de Origen</label>
                                             <select id="offer-selection" value={selectedOfferId} onChange={e => setSelectedOfferId(e.target.value)} required className="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary">
                                                 {approvedOffers.length > 0 ? (
-                                                    approvedOffers.map(o => {
-                                                        const projectForOffer = projects.find(p => p.offerId === o.id);
+                                                    (approvedOffers || []).map(o => {
+                                                        const projectForOffer = (projects || []).find(p => p.offerId === o.id);
                                                         const statusLabel = projectForOffer?.status === ProjectStatus.Completed ? ' (Finalizado)' : '';
                                                         return (<option key={o.id} value={o.id}>
                                                             {o.consecutiveNumber} - {o.prospectName}{statusLabel}
@@ -481,10 +481,10 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
                                     Pedidos Recurrentes
                                 </button>
                             </div>
-                            <div className="space-y-4">
+                                <div className="space-y-4">
                                 {items.map((item, index) => {
                                     const normalizedName = item.name.trim().toLowerCase();
-                                    const budgetItem = !isPreOp && isBudgetControlled && item.name ? consolidatedMaterials.find(m => m.name.toLowerCase() === normalizedName) : null;
+                                    const budgetItem = !isPreOp && isBudgetControlled && item.name ? (consolidatedMaterials || []).find(m => m.name.toLowerCase() === normalizedName) : null;
                                     const budgetedQty = budgetItem?.quantity || 0;
                                     const previouslyRequested = previouslyRequestedQuantities.get(normalizedName) || 0;
                                     const currentlyRequestedByOthers = items.filter((i, idx) => idx !== index && i.name.trim().toLowerCase() === normalizedName).reduce((sum, i) => sum + Number(i.quantity || 0), 0);
@@ -575,7 +575,7 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
                             </button>
                         </div>
                         <div className="space-y-3 max-h-96 overflow-y-auto">
-                            {recurringOrderTemplates.map(template => (
+                            {(recurringOrderTemplates || []).map(template => (
                                 <button
                                     key={template.id}
                                     type="button"

@@ -31,15 +31,15 @@ export const EditServiceRequestModal: React.FC<EditServiceRequestModalProps> = (
     onClose,
     onSubmit,
     request,
-    projects,
-    materials,
-    serviceItems,
+    projects = [],
+    materials = [],
+    serviceItems = [],
     currentUser,
-    budgets,
-    offers,
-    changeOrders,
-    allServiceRequests,
-    purchaseOrders
+    budgets = [],
+    offers = [],
+    changeOrders = [],
+    allServiceRequests = [],
+    purchaseOrders = []
 }) => {
     const appContext = useContext(AppContext);
     const roles = appContext?.roles || [];
@@ -49,21 +49,21 @@ export const EditServiceRequestModal: React.FC<EditServiceRequestModalProps> = (
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLocked, setIsLocked] = useState(false);
 
-    const combinedItemCatalog = useMemo(() => [...materials, ...serviceItems], [materials, serviceItems]);
+    const combinedItemCatalog = useMemo(() => [...(materials || []), ...(serviceItems || [])], [materials, serviceItems]);
 
     // --- Budget Control Logic ---
     const rootOffer = useMemo(() => {
         if (!request) return null;
-        const project = projects.find(p => p.id === request.projectId);
+        const project = (projects || []).find(p => p.id === request.projectId);
         if (!project || !project.offerId) return null;
-        return offers.find(o => o.id === project.offerId) || null;
+        return (offers || []).find(o => o.id === project.offerId) || null;
     }, [request, projects, offers]);
 
     const isBudgetControlled = useMemo(() => {
         if (!rootOffer) return false;
         if (rootOffer.budgetId) return true;
         // Check if there are any approved change orders with a budget for this offer
-        return changeOrders.some(co => co.offerId === rootOffer.id && co.status === ChangeOrderStatus.Approved && co.budgetId);
+        return (changeOrders || []).some(co => co.offerId === rootOffer.id && co.status === ChangeOrderStatus.Approved && co.budgetId);
     }, [rootOffer, changeOrders]);
 
     const consolidatedMaterials = useMemo(() => {
@@ -72,7 +72,7 @@ export const EditServiceRequestModal: React.FC<EditServiceRequestModalProps> = (
 
         // 1. Add materials from the initial offer's budget
         if (rootOffer.budgetId) {
-            const initialBudget = budgets.find(b => b.id === rootOffer.budgetId);
+            const initialBudget = (budgets || []).find(b => b.id === rootOffer.budgetId);
             if (initialBudget) {
                 initialBudget.activities.forEach(activity => {
                     activity.subActivities.forEach(sub => {
@@ -87,13 +87,13 @@ export const EditServiceRequestModal: React.FC<EditServiceRequestModalProps> = (
         }
 
         // 2. Add/Subtract materials from approved change orders
-        const approvedChangeOrders = changeOrders.filter(
+        const approvedChangeOrders = (changeOrders || []).filter(
             co => co.offerId === rootOffer.id && co.status === ChangeOrderStatus.Approved
         );
 
         approvedChangeOrders.forEach(co => {
             if (!co.budgetId) return;
-            const budget = budgets.find(b => b.id === co.budgetId);
+            const budget = (budgets || []).find(b => b.id === co.budgetId);
             if (!budget) return;
 
             const multiplier = co.changeType === 'Crédito' ? -1 : 1;
@@ -121,7 +121,7 @@ export const EditServiceRequestModal: React.FC<EditServiceRequestModalProps> = (
         const quantityMap = new Map<string, number>();
 
         // 1. Pending Service Requests
-        allServiceRequests
+        (allServiceRequests || [])
             .filter(req => req.id !== request.id && req.projectId === request.projectId &&
                 [ServiceRequestStatus.PendingApproval, ServiceRequestStatus.PendingGMApproval, ServiceRequestStatus.InQuotation, ServiceRequestStatus.QuotationReady].includes(req.status))
             .forEach(req => {
@@ -132,7 +132,7 @@ export const EditServiceRequestModal: React.FC<EditServiceRequestModalProps> = (
             });
 
         // 2. Existing Purchase Orders (approved, issued, received, etc.)
-        purchaseOrders
+        (purchaseOrders || [])
             .filter(po => po.projectId === request.projectId &&
                 po.status !== POStatus.Rejected && po.status !== POStatus.Cancelled)
             .forEach(po => {
@@ -166,8 +166,8 @@ export const EditServiceRequestModal: React.FC<EditServiceRequestModalProps> = (
                 currentItem.name = value;
                 const normalizedValue = String(value).trim().toLowerCase();
 
-                const budgetItem = consolidatedMaterials.find(m => m.name.toLowerCase() === normalizedValue);
-                const catalogItem = combinedItemCatalog.find(catItem => catItem.name.toLowerCase() === normalizedValue);
+                const budgetItem = (consolidatedMaterials || []).find(m => m.name.toLowerCase() === normalizedValue);
+                const catalogItem = (combinedItemCatalog || []).find(catItem => catItem.name.toLowerCase() === normalizedValue);
 
                 const isNowUnforeseen = isBudgetControlled && value && !budgetItem;
                 currentItem.isUnforeseen = isNowUnforeseen;
@@ -241,7 +241,7 @@ export const EditServiceRequestModal: React.FC<EditServiceRequestModalProps> = (
             }
         }
 
-        const project = projects.find(p => p.id === Number(projectId));
+        const project = (projects || []).find(p => p.id === Number(projectId));
         const userRoles = roles.filter(r => currentUser.roleIds.includes(r.id));
         const maxItemOverage = Math.max(0, ...userRoles.map(r => r.maxItemOveragePercentage || 0));
         const maxProjectOverage = Math.max(0, ...userRoles.map(r => r.maxProjectOveragePercentage || 0));
@@ -252,7 +252,7 @@ export const EditServiceRequestModal: React.FC<EditServiceRequestModalProps> = (
         if (isBudgetControlled && project) {
             for (const item of finalItems) {
                 const normalizedName = item.name.toLowerCase();
-                const budgetItem = consolidatedMaterials.find(m => m.name.toLowerCase() === normalizedName);
+                const budgetItem = (consolidatedMaterials || []).find(m => m.name.toLowerCase() === normalizedName);
                 const budgetedQty = budgetItem?.quantity || 0;
 
                 const previouslyReq = previouslyRequestedQuantities.get(normalizedName) || 0;
@@ -266,7 +266,7 @@ export const EditServiceRequestModal: React.FC<EditServiceRequestModalProps> = (
                         requiresGMApproval = true;
                     }
 
-                    const estimatedUnitCost = item.estimatedUnitCost || combinedItemCatalog.find(c => c.name.toLowerCase() === normalizedName)?.unitCost || 0;
+                    const estimatedUnitCost = item.estimatedUnitCost || (combinedItemCatalog || []).find(c => c.name.toLowerCase() === normalizedName)?.unitCost || 0;
                     totalAdditionalCost += overageQty * estimatedUnitCost;
                 }
             }
@@ -364,7 +364,7 @@ export const EditServiceRequestModal: React.FC<EditServiceRequestModalProps> = (
                             <div className="space-y-4">
                                 {items.map((item, index) => {
                                     const normalizedName = item.name.trim().toLowerCase();
-                                    const budgetItem = isBudgetControlled && item.name ? consolidatedMaterials.find(m => m.name.toLowerCase() === normalizedName) : null;
+                                    const budgetItem = isBudgetControlled && item.name ? (consolidatedMaterials || []).find(m => m.name.toLowerCase() === normalizedName) : null;
                                     const budgetedQty = budgetItem?.quantity || 0;
                                     const previouslyRequested = previouslyRequestedQuantities.get(normalizedName) || 0;
                                     const currentlyRequestedByOthers = items.filter((i, idx) => idx !== index && i.name.trim().toLowerCase() === normalizedName).reduce((sum, i) => sum + Number(i.quantity || 0), 0);

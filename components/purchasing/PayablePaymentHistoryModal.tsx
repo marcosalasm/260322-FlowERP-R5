@@ -39,7 +39,7 @@ export const PayablePaymentHistoryModal: React.FC<PayablePaymentHistoryModalProp
     }));
 
     const creditHistory = (account.appliedCreditNoteIds || [])
-        .map(cnId => creditNotes.find(cn => cn.id === cnId))
+        .map(cnId => (creditNotes || []).find(cn => cn.id === cnId))
         .filter((cn): cn is NonNullable<typeof cn> => !!cn)
         .map(cn => ({
             type: 'credit',

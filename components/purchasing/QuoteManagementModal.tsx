@@ -50,8 +50,8 @@ const AddQuoteForm: React.FC<AddQuoteFormProps> = ({ request, suppliers, onSubmi
 
     const [lineItems, setLineItems] = useState<any[]>(() => {
         if (initialData?.items) {
-            return request.items.map(reqItem => {
-                const analyzedItem = initialData.items?.find(ai => ai.serviceRequestItemId === reqItem.id);
+            return (request?.items || []).map(reqItem => {
+                const analyzedItem = (initialData.items || []).find(ai => ai.serviceRequestItemId === reqItem.id);
                 return {
                     serviceRequestItemId: reqItem.id,
                     unitPrice: analyzedItem?.unitPrice || 0,
@@ -59,7 +59,7 @@ const AddQuoteForm: React.FC<AddQuoteFormProps> = ({ request, suppliers, onSubmi
                 };
             });
         }
-        return request.items.map(i => ({ serviceRequestItemId: i.id, unitPrice: 0, quality: 'Media' as QualityRating }));
+        return (request?.items || []).map(i => ({ serviceRequestItemId: i.id, unitPrice: 0, quality: 'Media' as QualityRating }));
     });
 
     // Parse initialData to set payment term dropdowns
@@ -130,14 +130,14 @@ const AddQuoteForm: React.FC<AddQuoteFormProps> = ({ request, suppliers, onSubmi
             return;
         }
 
-        const selectedSupplier = suppliers.find(s => s.id === Number(supplierId));
+        const selectedSupplier = (suppliers || []).find(s => s.id === Number(supplierId));
         if (!selectedSupplier) {
             alert("Por favor, seleccione un proveedor válido.");
             return;
         }
 
-        const total = lineItems.reduce((acc, current, index) => {
-            const originalItem = request.items.find(ri => ri.id === current.serviceRequestItemId);
+        const total = (lineItems || []).reduce((acc, current, index) => {
+            const originalItem = (request?.items || []).find(ri => ri.id === current.serviceRequestItemId);
             return acc + ((originalItem?.quantity || 0) * current.unitPrice);
         }, 0);
 
@@ -212,7 +212,7 @@ const AddQuoteForm: React.FC<AddQuoteFormProps> = ({ request, suppliers, onSubmi
                     <label className="text-sm font-medium text-slate-700">Proveedor</label>
                     <div className="flex gap-2 mt-1">
                         <select value={supplierId} onChange={e => setSupplierId(e.target.value)} required className="flex-grow p-2 border border-slate-300 rounded-md">
-                            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            {(suppliers || []).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                         <button
                             type="button"
@@ -314,8 +314,8 @@ const AddQuoteForm: React.FC<AddQuoteFormProps> = ({ request, suppliers, onSubmi
                             </tr>
                         </thead>
                         <tbody>
-                            {request.items.map((item) => {
-                                const lineItem = lineItems.find(li => li.serviceRequestItemId === item.id) || {};
+                            {(request?.items || []).map((item) => {
+                                const lineItem = (lineItems || []).find(li => li.serviceRequestItemId === item.id) || {};
                                 return (
                                     <tr key={item.id} className="bg-white">
                                         <td className="p-2">{item.name} <span className="text-xs text-slate-500">({item.quantity} {item.unit})</span></td>
@@ -467,7 +467,7 @@ export const QuoteManagementModal: React.FC<QuoteManagementModalProps> = ({ isOp
     if (!isOpen || !request || !appContext) return null;
     const { user, roles } = appContext;
 
-    const userRoles = new Set(user.roleIds.map(id => roles.find(r => r.id === id)?.name));
+    const userRoles = new Set(user.roleIds.map(id => (roles || []).find(r => r.id === id)?.name));
     const canEditAnyQuote = (userRoles.has('Director financiero') || userRoles.has('Gerente General')) &&
         [ServiceRequestStatus.Approved, ServiceRequestStatus.InQuotation, ServiceRequestStatus.QuotationReady].includes(request.status);
 

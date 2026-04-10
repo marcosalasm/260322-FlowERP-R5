@@ -640,7 +640,7 @@ const PurchasingDashboard: React.FC = () => {
 
     // Filter requests based on user role to simulate workflow
     const filteredRequests = useMemo(() => {
-        const userRoleNames = new Set(user.roleIds.map(id => roles.find(r => r.id === id)?.name));
+        const userRoleNames = new Set(user.roleIds.map(id => (roles || []).find(r => r.id === id)?.name));
 
         // High-level approvers
         if (userRoleNames.has('Gerente General') || userRoleNames.has('Director financiero') || userRoleNames.has('Director de proyectos')) {
