@@ -103,10 +103,10 @@ export const apiService = {
 
     // ── Users ──────────────────────────────────────────────────────────────
     getUsers: async () => {
-        const r = await fetchWithAuth(`${API_URL}/users`);
-        if (!r.ok) throw new Error('API [users]: Failed to fetch');
-        const data = await r.json();
-        return (data ?? []).map((u: any) => ({
+        const { data, error } = await supabase.from('users').select('*, user_roles(*)');
+        if (error) throw new Error('API [users]: Failed to fetch');
+        const camelData = keysToCamel(data || []);
+        return camelData.map((u: any) => ({
             ...u,
             roleIds: u.userRoles?.map((ur: any) => ur.roleId) ?? [1],
         }));

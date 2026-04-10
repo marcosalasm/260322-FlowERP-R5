@@ -47,9 +47,6 @@ export const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests
     if (requestStatus === ServiceRequestStatus.Approved) {
       return can('purchasing', 'quotes', 'create');
     }
-    if (requestStatus === ServiceRequestStatus.POPendingApproval) {
-      return can('purchasing', 'orders', 'approve');
-    }
     return false;
   };
 
@@ -176,9 +173,6 @@ export const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests
       case ServiceRequestStatus.Approved:
         newStatus = ServiceRequestStatus.InQuotation;
         break;
-      case ServiceRequestStatus.POPendingApproval:
-        newStatus = ServiceRequestStatus.POApproved;
-        break;
     }
 
     if (newStatus) {
@@ -225,7 +219,6 @@ export const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests
     if (status === ServiceRequestStatus.PendingApproval) return "Aprobar para Cotizar";
     if (status === ServiceRequestStatus.PendingGMApproval) return "Aprobar Exceso";
     if (status === ServiceRequestStatus.Approved) return "Cotizar";
-    if (status === ServiceRequestStatus.POPendingApproval) return "Aprobar OC";
     return "Aprobar";
   }
 

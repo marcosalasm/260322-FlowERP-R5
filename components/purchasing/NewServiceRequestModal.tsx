@@ -56,6 +56,22 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
 
     const combinedItemCatalog = useMemo(() => [...(materials || []), ...(serviceItems || [])], [materials, serviceItems]);
 
+    // PROTECT DATA RENDER - Early return spinner if modal is open but context data is not loaded
+    if (isOpen && (!offers || !projects || !prospects || !materials || !budgets || !serviceItems)) {
+        return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
+                <div className="bg-white p-8 rounded-2xl shadow-xl flex flex-col items-center max-w-sm w-full mx-4">
+                    <svg className="animate-spin h-10 w-10 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <h3 className="text-lg font-bold text-slate-800 mb-1">Cargando Datos Requeridos</h3>
+                    <p className="text-sm text-slate-500 text-center">Sincronizando información para nueva solicitud...</p>
+                </div>
+            </div>
+        );
+    }
+
     const approvedOffers = useMemo(() => {
         const allApproved = (offers || []).filter(o => o.status === OfferStatus.Aprobacion);
         if (isWarranty) {
