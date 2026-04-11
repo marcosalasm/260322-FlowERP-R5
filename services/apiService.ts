@@ -324,8 +324,17 @@ export const apiService = {
 
     // ── Purchase Orders ────────────────────────────────────────────────────
     getPurchaseOrders: async () => {
-        const data = await fetchAllPaginated('purchase_orders', '*, items:purchase_order_items(*)', q => q.order('created_at', { ascending: false }));
-        return keysToCamel(data || []);
+        const data = await fetchAllPaginated('purchase_orders', '*, items:purchase_order_items(*), suppliers(name), projects(name)', q => 
+            q.in('status', ['Emitida', 'OC Aprobada', 'Aprobada', 'Pendiente OC', 'Aprobación Financiera', 'Recibida', 'Cancelada', 'Recepción Parcial', 'Rechazada', 'Pendiente'])
+             .order('created_at', { ascending: false })
+        );
+        const mappedData = keysToCamel(data || []);
+        // Map joined data to the expected flat properties
+        return mappedData.map((po: any) => ({
+            ...po,
+            supplierName: po.suppliers?.name || po.supplierName || 'Proveedor',
+            projectName: po.projects?.name || po.projectName || 'Proyecto',
+        }));
     },
     createPurchaseOrder: async (data: any) => {
         const { items, id: _frontendId, ...poData } = data;
