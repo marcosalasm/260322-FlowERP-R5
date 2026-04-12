@@ -46,9 +46,9 @@ export const ExpenseDetailModal: React.FC<{
             if (request.winnerSelection) {
                 total = Object.keys(request.winnerSelection).reduce((acc, itemId) => {
                     const winnerInfo = request.winnerSelection![parseInt(itemId, 10)];
-                    const serviceItem = request.items.find(i => i.id === parseInt(itemId, 10));
-                    const quote = quoteResponses.find(q => q.id === winnerInfo.quoteResponseId);
-                    const quoteItem = quote?.items.find(qi => qi.serviceRequestItemId === parseInt(itemId, 10));
+                    const serviceItem = (request.items || []).find(i => i.id === parseInt(itemId, 10));
+                    const quote = (quoteResponses || []).find(q => q.id === winnerInfo.quoteResponseId);
+                    const quoteItem = (quote?.items || []).find(qi => qi.serviceRequestItemId === parseInt(itemId, 10));
 
                     if (quote) supplierNames.add(quote.supplierName);
 

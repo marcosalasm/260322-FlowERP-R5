@@ -96,11 +96,11 @@ export const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> =
         if (!isApprovalMode || !serviceRequest?.winnerSelection || !companyInfo) return { total: 0 };
 
         const totalValue = Object.entries(serviceRequest.winnerSelection).reduce((acc, [itemId, winnerInfo]) => {
-            const item = serviceRequest.items.find(i => i.id === Number(itemId));
-            const quoteResponse = quotesForRequest.find(qr => qr.id === (winnerInfo as any).quoteResponseId);
-            const quoteLineItem = quoteResponse?.items.find(qli => qli.serviceRequestItemId === Number(itemId));
+            const item = (serviceRequest.items || []).find(i => i.id === Number(itemId));
+            const quoteResponse = (quotesForRequest || []).find(qr => qr.id === (winnerInfo as any).quoteResponseId);
+            const quoteLineItem = (quoteResponse?.items || []).find(qli => qli.serviceRequestItemId === Number(itemId));
 
-            if (item && quoteLineItem) {
+            if (item && quoteResponse && quoteLineItem) {
                 return acc + (item.quantity * quoteLineItem.unitPrice);
             }
             return acc;

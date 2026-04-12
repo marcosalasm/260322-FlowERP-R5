@@ -166,9 +166,9 @@ export const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ orders, on
             if (!request.winnerSelection) return;
 
             const itemsBySupplier = Object.entries(request.winnerSelection).reduce((acc, [itemId, winnerInfo]) => {
-                const item = request.items.find(i => i.id === Number(itemId));
-                const quoteResponse = quoteResponses.find(qr => qr.id === (winnerInfo as any).quoteResponseId);
-                const quoteLineItem = quoteResponse?.items.find(qli => qli.serviceRequestItemId === Number(itemId));
+                const item = (request.items || []).find(i => i.id === Number(itemId));
+                const quoteResponse = (quoteResponses || []).find(qr => qr.id === (winnerInfo as any).quoteResponseId);
+                const quoteLineItem = (quoteResponse?.items || []).find(qli => qli.serviceRequestItemId === Number(itemId));
 
                 if (item && quoteResponse && quoteLineItem) {
                     if (!acc[(winnerInfo as any).supplierId]) {

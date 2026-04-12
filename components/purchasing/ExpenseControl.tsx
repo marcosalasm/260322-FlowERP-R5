@@ -18,7 +18,7 @@ export const ExpenseControl: React.FC = () => {
     const { projects, purchaseOrders, serviceRequests, quoteResponses } = appContext || {};
 
     const projectExpenseSummary = useMemo((): ProjectExpenseSummary[] => {
-        if (!projects || !purchaseOrders || !serviceRequests || !quoteResponses) {
+        if (!projects || projects.length === 0 || !purchaseOrders || !serviceRequests || !quoteResponses) {
             return [];
         }
 
@@ -39,9 +39,9 @@ export const ExpenseControl: React.FC = () => {
                     // This calculates the total for a single service request based on winning quotes
                     const totalAdjudicado = Object.keys(request.winnerSelection).reduce((acc, itemId) => {
                         const winnerInfo = request.winnerSelection![parseInt(itemId, 10)];
-                        const serviceItem = request.items.find(i => i.id === parseInt(itemId, 10));
-                        const quote = quoteResponses.find(q => q.id === winnerInfo.quoteResponseId);
-                        const quoteItem = quote?.items.find(qi => qi.serviceRequestItemId === parseInt(itemId, 10));
+                        const serviceItem = (request.items || []).find(i => i.id === parseInt(itemId, 10));
+                        const quote = (quoteResponses || []).find(q => q.id === winnerInfo.quoteResponseId);
+                        const quoteItem = (quote?.items || []).find(qi => qi.serviceRequestItemId === parseInt(itemId, 10));
                         
                         if(serviceItem && quoteItem) {
                             return acc + (serviceItem.quantity * quoteItem.unitPrice);

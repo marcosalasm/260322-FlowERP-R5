@@ -189,9 +189,112 @@ const PurchasingDashboard: React.FC = () => {
             const req = serviceRequests.find(r => r.id === serviceRequestId);
             if (!req) return;
 
+            const itemsBySupplier = Object.entries(winners).reduce((acc, [itemId, winnerInfo]) => {
+                const item = (req.items || []).find(i => i.id === Number(itemId));
+                const quoteResponse = (quoteResponses || []).find(qr => qr.id === (winnerInfo as any).quoteResponseId);
+                const quoteLineItem = (quoteResponse?.items || []).find(qli => qli.serviceRequestItemId === Number(itemId));
+
+                if (item && quoteResponse && quoteLineItem) {
+                    if (!acc[(winnerInfo as any).supplierId]) {
+                        acc[(winnerInfo as any).supplierId] = {
+                            items: [],
+                            deliveryDays: quoteResponse.deliveryDays,
+                            proformaNumber: quoteResponse.quoteNumber,
+                            paymentTerms: quoteResponse.paymentTerms
+                        };
+                    }
+                    acc[(winnerInfo as any).supplierId].items.push({
+                        ...item,
+                        unitPrice: quoteLineItem.unitPrice,
+                    });
+                }
+                return acc;
+            }, {} as { [supplierId: string]: { items: any[], deliveryDays: number, proformaNumber?: string, paymentTerms: string } });
+
+            const newPOs: PurchaseOrder[] = [];
+            const newAPs: AccountPayable[] = [];
+
+            for (const supplierId in itemsBySupplier) {
+                const supplierData = itemsBySupplier[supplierId];
+                const supplier = suppliers.find(s => s.id === Number(supplierId));
+                if (!supplier) continue;
+
+                const subtotal = supplierData.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+                const paymentTermsString = supplierData.paymentTerms;
+
+                const newPOData: Omit<PurchaseOrder, 'id'> = {
+                    serviceRequestId: req.id,
+                    projectId: req.projectId,
+                    projectName: req.projectName,
+                    supplierId: supplier.id,
+                    supplierName: supplier.name,
+                    orderDate: new Date().toISOString().split('T')[0],
+                    expectedDeliveryDate: addDays(new Date(), supplierData.deliveryDays).toISOString().split('T')[0],
+                    items: supplierData.items,
+                    subtotal,
+                    discount: 0,
+                    iva: 0,
+                    totalAmount: subtotal,
+                    status: POStatus.Approved,
+                    paymentTerms: paymentTermsString,
+                    proformaNumber: supplierData.proformaNumber,
+                    isPreOp: req.isPreOp,
+                    prospectId: req.prospectId,
+                };
+                const savedPO = await apiService.createPurchaseOrder(newPOData);
+                newPOs.push(savedPO);
+
+                let creditDays = 0;
+                if (paymentTermsString.toLowerCase().includes('crédito')) {
+                    const daysMatch = paymentTermsString.match(/\d+/);
+                    creditDays = daysMatch ? parseInt(daysMatch[0], 10) : 30;
+                }
+                const dueDate = addDays(new Date(savedPO.orderDate), creditDays).toISOString().split('T')[0];
+
+                const newAPData: Omit<AccountPayable, 'id'> = {
+                    purchaseOrderId: savedPO.id,
+                    supplierId: savedPO.supplierId,
+                    supplierName: savedPO.supplierName,
+                    invoiceNumber: `PENDIENTE-OC-${savedPO.id}`,
+                    invoiceDate: savedPO.orderDate,
+                    dueDate: dueDate,
+                    totalAmount: savedPO.totalAmount,
+                    paidAmount: 0,
+                    payments: [],
+                    status: APStatus.PendingPayment,
+                };
+                const savedAP = await apiService.createAccountPayable(newAPData);
+                newAPs.push(savedAP);
+            }
+
+            if (req.isPreOp && req.prospectId && newPOs.length > 0 && typeof preOpRubros !== 'undefined' && typeof apiService.createPreOpExpense !== 'undefined') {
+                const totalPreOp = newPOs.reduce((sum, po) => sum + po.totalAmount, 0);
+                const firstRubroId = preOpRubros.length > 0 ? preOpRubros[0].id : 0;
+                const newPreOpEntryData: Omit<PreOpExpense, 'id'> = {
+                    prospectId: req.prospectId,
+                    prospectName: req.projectName.replace('GASTO PRE-OP: ', ''),
+                    fecha: new Date().toISOString().split('T')[0],
+                    totalGasto: totalPreOp,
+                    status: 'Registrado',
+                    desglose: { [firstRubroId]: totalPreOp }
+                };
+                try {
+                    const savedPreOp = await apiService.createPreOpExpense(newPreOpEntryData);
+                    setPreOpExpenses(prev => [savedPreOp, ...prev]);
+                    addNotification(`Se ha registrado automáticamente un Gasto Pre-operativo de $${totalPreOp} para el prospecto.`);
+                } catch (e) {
+                    console.error("Error creating Pre-Op Expense", e);
+                }
+            }
+
+            setPurchaseOrders(prev => [...newPOs, ...prev]);
+            if (newAPs.length > 0) {
+                setAccountsPayable(prev => [...newAPs, ...prev]);
+            }
+
             const updatedReq = {
                 ...req,
-                status: ServiceRequestStatus.POPendingApproval,
+                status: ServiceRequestStatus.POApproved,
                 finalJustification: justification,
                 winnerSelection: winners
             };
@@ -201,10 +304,10 @@ const PurchasingDashboard: React.FC = () => {
 
             setIsComparativeChartModalOpen(false);
             setSelectedRequest(null);
-            showToast('Selección de proveedores guardada. Pendiente de aprobación.', 'success');
+            showToast('Órdenes de Compra generadas y solicitud aprobada.', 'success');
         } catch (error) {
             console.error('Error selecting winners:', error);
-            showToast('Error al guardar la selección de ganadores.', 'error');
+            showToast('Error al procesar la aprobación y crear OC.', 'error');
         }
     };
 
