@@ -172,6 +172,23 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
         return quantityMap;
     }, [associatedProject, allServiceRequests, purchaseOrders, isPreOp]);
 
+    const [activeDropdownIndex, setActiveDropdownIndex] = useState<number | null>(null);
+
+    const materialesPresupuestados = useMemo(() => {
+        if (!isBudgetControlled || isPreOp) return [];
+        return consolidatedMaterials.map(cm => {
+            const mat = (combinedItemCatalog || []).find(m => m.name.toLowerCase() === cm.name.toLowerCase());
+            const previouslyRequested = previouslyRequestedQuantities.get(cm.name.toLowerCase()) || 0;
+            const availableQty = cm.quantity - previouslyRequested;
+            return {
+                material_id: mat?.id,
+                name: mat ? mat.name : cm.name,
+                unit: mat ? mat.unit : cm.unit,
+                cantidad_disponible: availableQty,
+                is_cataloged: !!mat
+            };
+        }).filter(m => m.is_cataloged);
+    }, [consolidatedMaterials, combinedItemCatalog, previouslyRequestedQuantities, isBudgetControlled, isPreOp]);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -206,6 +223,7 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
 
             if (field === 'name') {
                 currentItem.name = value;
+                currentItem.material_id = undefined;
                 const normalizedValue = String(value).trim().toLowerCase();
 
                 // Prioritize checking if it's in the project's budget
@@ -282,7 +300,7 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
 
         const finalItems = items
             .map(i => ({
-
+                material_id: i.material_id,
                 name: i.name.trim(),
                 quantity: Number(i.quantity),
                 unit: i.unit,
@@ -512,7 +530,47 @@ export const NewServiceRequestModal: React.FC<NewServiceRequestModalProps> = ({
                                         <div key={item.id} className={`p-4 rounded-xl border ${item.isUnforeseen ? 'bg-purple-50/50 border-purple-200 shadow-sm shadow-purple-50' : 'bg-slate-50 border-slate-200'}`}>
                                             <div className="grid grid-cols-[1fr,120px,120px,auto] gap-3 items-center">
                                                 <div className="relative">
-                                                    <input list={`item-catalog-new-${isBudgetControlled}`} placeholder="Seleccione o escriba un ítem..." value={item.name} onChange={e => handleItemChange(index, 'name', e.target.value)} required className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
+                                                    <input 
+                                                        list={!isPreOp && isBudgetControlled ? undefined : `item-catalog-new-${isBudgetControlled}`}
+                                                        placeholder="Seleccione o escriba un ítem..." 
+                                                        value={item.name} 
+                                                        onChange={e => {
+                                                            setActiveDropdownIndex(index);
+                                                            handleItemChange(index, 'name', e.target.value);
+                                                            handleItemChange(index, 'material_id', undefined);
+                                                        }} 
+                                                        onFocus={() => setActiveDropdownIndex(index)}
+                                                        onBlur={() => setTimeout(() => setActiveDropdownIndex(null), 200)}
+                                                        required 
+                                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                    />
+                                                    {activeDropdownIndex === index && !isPreOp && isBudgetControlled && item.name !== undefined && materialesPresupuestados.length > 0 && (
+                                                        <ul className="absolute z-10 w-full mt-1 bg-white border border-slate-200 shadow-xl rounded-lg max-h-48 overflow-y-auto">
+                                                            {materialesPresupuestados
+                                                                .filter(mat => mat.name.toLowerCase().includes(item.name.toLowerCase()))
+                                                                .map(mat => (
+                                                                    <li 
+                                                                        key={mat.material_id || mat.name} 
+                                                                        onMouseDown={(e) => {
+                                                                            e.preventDefault(); 
+                                                                            handleItemChange(index, 'name', mat.name);
+                                                                            if (mat.material_id) handleItemChange(index, 'material_id', mat.material_id);
+                                                                            handleItemChange(index, 'unit', mat.unit);
+                                                                            setActiveDropdownIndex(null);
+                                                                        }}
+                                                                        className="p-3 hover:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-0 flex justify-between items-center"
+                                                                    >
+                                                                        <span className="font-semibold text-slate-700">{mat.name}</span>
+                                                                        <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                                                                            {formatNumber(mat.cantidad_disponible || 0)} {mat.unit} disp.
+                                                                        </span>
+                                                                    </li>
+                                                            ))}
+                                                            {materialesPresupuestados.filter(mat => mat.name.toLowerCase().includes(item.name.toLowerCase())).length === 0 && (
+                                                                <li className="p-3 text-sm text-slate-400 italic text-center">No hay coincidencias en presupuesto</li>
+                                                            )}
+                                                        </ul>
+                                                    )}
                                                 </div>
                                                 <input type="number" placeholder="Cant." value={item.quantity} min="1" onChange={e => handleItemChange(index, 'quantity', e.target.value)} required className={`p-2.5 border rounded-lg text-center font-bold focus:ring-2 outline-none ${isOverBudget && isBudgetControlled && !item.isUnforeseen ? 'border-red-500 ring-red-100' : 'border-slate-300 focus:ring-primary/20'}`} />
                                                 <input

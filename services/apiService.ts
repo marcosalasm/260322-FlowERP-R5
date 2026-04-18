@@ -391,7 +391,26 @@ export const apiService = {
         return keysToCamel(data || []);
     },
     createGoodsReceipt: async (data: any) => {
-        const { items, id: _frontendId, po, purchase_orders, purchaseOrders, ...grData } = data;
+        const { items } = data;
+        
+        // 1. Construimos un objeto SOLO con las columnas reales de la BD
+        const grData: any = {
+            purchaseOrderId: data.purchaseOrderId,
+            creationDate: data.creationDate,
+            expectedReceiptDate: data.expectedReceiptDate,
+            actualReceiptDate: data.actualReceiptDate,
+            receivedBy: data.receivedBy,
+            status: data.status,
+            notes: data.notes,
+            closedByCreditNoteIds: data.closedByCreditNoteIds,
+            isSubcontractReceipt: data.isSubcontractReceipt,
+            amountReceived: data.amountReceived,
+            progressDescription: data.progressDescription,
+            subcontractorInvoice: data.subcontractorInvoice,
+        };
+        // Remove undefined keys
+        Object.keys(grData).forEach(k => grData[k] === undefined && delete grData[k]);
+        
         const payload = keysToSnake(grData);
         
         const { data: newGR, error } = await supabase.from('goods_receipts').insert([payload]).select().single();
@@ -408,12 +427,33 @@ export const apiService = {
         return keysToCamel(newGR);
     },
     updateGoodsReceipt: async (id: number, data: any) => {
-        const { items, po, purchase_orders, purchaseOrders, ...grData } = data;
+        const { items } = data;
+        
+        // 1. Construimos un objeto SOLO con las columnas reales de la BD
+        const grData: any = {
+            purchaseOrderId: data.purchaseOrderId,
+            creationDate: data.creationDate,
+            expectedReceiptDate: data.expectedReceiptDate,
+            actualReceiptDate: data.actualReceiptDate,
+            receivedBy: data.receivedBy,
+            status: data.status,
+            notes: data.notes,
+            closedByCreditNoteIds: data.closedByCreditNoteIds,
+            isSubcontractReceipt: data.isSubcontractReceipt,
+            amountReceived: data.amountReceived,
+            progressDescription: data.progressDescription,
+            subcontractorInvoice: data.subcontractorInvoice,
+        };
+        // Remove undefined keys
+        Object.keys(grData).forEach(k => grData[k] === undefined && delete grData[k]);
+
         const payload = keysToSnake(grData);
         
+        // 2. Enviamos únicamente el payload limpio
         const { data: updatedGR, error } = await supabase.from('goods_receipts').update(payload).eq('id', id).select().single();
         if (error) throw new Error('Failed to update goods receipt: ' + error.message);
         
+        // 3. Validar la actualización de los Ítems (consultas separadas)
         if (items) {
             await supabase.from('goods_receipt_items').delete().eq('goods_receipt_id', id);
             if (items.length > 0) {

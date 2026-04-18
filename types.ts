@@ -81,6 +81,7 @@ export interface ServiceRequestItem {
   isUnforeseen?: boolean;
   unforeseenJustification?: string;
   estimatedUnitCost?: number;
+  material_id?: number;
 }
 
 export type WinnerSelection = { [serviceRequestItemId: number]: { quoteResponseId: number; supplierId: number; } };
