@@ -11,6 +11,7 @@ interface PurchaseOrderDetailModalProps {
     onApprove: (request: ServiceRequest, overrunJustification?: string) => void;
     onReject: (item: ServiceRequest | PurchaseOrder, reason: string) => void;
     onCreateSubcontract: (po: PurchaseOrder) => void;
+    onApprovePO?: (po: PurchaseOrder) => void;
 }
 
 import { formatCurrency, formatNumber } from '../../utils/format';
@@ -48,7 +49,7 @@ const FileAttachmentRow: React.FC<{ label: string; fileName?: string; fileBase64
         </div>
     );
 
-export const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> = ({ isOpen, onClose, item, onSave, onApprove, onReject, onCreateSubcontract }) => {
+export const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> = ({ isOpen, onClose, item, onSave, onApprove, onReject, onCreateSubcontract, onApprovePO }) => {
     const appContext = useContext(AppContext);
     const { serviceRequests, quoteResponses, projects, companyInfo, suppliers } = appContext || {};
 
@@ -422,6 +423,11 @@ export const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> =
                                 )}
                             </div>
                             <div className="flex-shrink-0 flex gap-4">
+                                {purchaseOrder && purchaseOrder.status === POStatus.PendingFinancialApproval && onApprovePO && (
+                                    <button onClick={() => onApprovePO(purchaseOrder)} className="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700">
+                                        Aprobar Orden
+                                    </button>
+                                )}
                                 <button onClick={onClose} className="bg-slate-200 text-slate-800 font-bold py-2 px-4 rounded-lg">Cerrar</button>
                                 <button onClick={handleSave} disabled={isSaving} className="bg-primary text-white font-bold py-2 px-6 rounded-lg hover:bg-primary-dark">
                                     {isSaving ? "Guardando..." : "Guardar Cambios"}

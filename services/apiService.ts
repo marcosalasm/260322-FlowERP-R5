@@ -358,7 +358,7 @@ export const apiService = {
         return keysToCamel(newPO);
     },
     updatePurchaseOrder: async (id: number, data: any) => {
-        const { items, ...poData } = data;
+        const { items, projects, suppliers, providers, projectName, ...poData } = data;
         const payload = keysToSnake(poData);
         
         const { data: updatedPO, error } = await supabase.from('purchase_orders').update(payload).eq('id', id).select().single();

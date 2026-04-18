@@ -216,7 +216,7 @@ export const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ orders, on
                     discount,
                     iva,
                     totalAmount,
-                    status: POStatus.Approved,
+                    status: POStatus.PendingFinancialApproval,
                     paymentTerms: paymentTermsString,
                     proformaNumber: supplierData.proformaNumber,
                     isPreOp: request.isPreOp,
@@ -629,6 +629,18 @@ export const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ orders, on
 
     const canApproveProposals = can('purchasing', 'orders', 'approve');
 
+    const handleApprovePO = async (po: PurchaseOrderType) => {
+        try {
+            const saved = await apiService.updatePurchaseOrder(po.id, { status: POStatus.Approved });
+            setPurchaseOrders(prev => prev.map(p => p.id === saved.id ? saved : p));
+            showToast(`Orden de Compra #${saved.id} aprobada.`, 'success');
+            setDetailModalItem(null);
+        } catch (error) {
+            console.error('Error approving PO:', error);
+            showToast('Error al aprobar la Orden de Compra.', 'error');
+        }
+    };
+
     return (
         <>
             <div className="space-y-8">
@@ -662,6 +674,7 @@ export const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ orders, on
                 onApprove={handleApproveProposal}
                 onReject={handleRejection}
                 onCreateSubcontract={onCreateSubcontract}
+                onApprovePO={handleApprovePO}
             />
         </>
     );

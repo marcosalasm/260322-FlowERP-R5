@@ -235,7 +235,7 @@ const PurchasingDashboard: React.FC = () => {
                     discount: 0,
                     iva: 0,
                     totalAmount: subtotal,
-                    status: POStatus.Approved,
+                    status: POStatus.PendingFinancialApproval,
                     paymentTerms: paymentTermsString,
                     proformaNumber: supplierData.proformaNumber,
                     isPreOp: req.isPreOp,
