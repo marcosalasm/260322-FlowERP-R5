@@ -212,8 +212,6 @@ const PurchasingDashboard: React.FC = () => {
             }, {} as { [supplierId: string]: { items: any[], deliveryDays: number, proformaNumber?: string, paymentTerms: string } });
 
             const newPOs: PurchaseOrder[] = [];
-            const newAPs: AccountPayable[] = [];
-
             for (const supplierId in itemsBySupplier) {
                 const supplierData = itemsBySupplier[supplierId];
                 const supplier = suppliers.find(s => s.id === Number(supplierId));
@@ -243,28 +241,6 @@ const PurchasingDashboard: React.FC = () => {
                 };
                 const savedPO = await apiService.createPurchaseOrder(newPOData);
                 newPOs.push(savedPO);
-
-                let creditDays = 0;
-                if (paymentTermsString.toLowerCase().includes('crédito')) {
-                    const daysMatch = paymentTermsString.match(/\d+/);
-                    creditDays = daysMatch ? parseInt(daysMatch[0], 10) : 30;
-                }
-                const dueDate = addDays(new Date(savedPO.orderDate), creditDays).toISOString().split('T')[0];
-
-                const newAPData: Omit<AccountPayable, 'id'> = {
-                    purchaseOrderId: savedPO.id,
-                    supplierId: savedPO.supplierId,
-                    supplierName: savedPO.supplierName,
-                    invoiceNumber: `PENDIENTE-OC-${savedPO.id}`,
-                    invoiceDate: savedPO.orderDate,
-                    dueDate: dueDate,
-                    totalAmount: savedPO.totalAmount,
-                    paidAmount: 0,
-                    payments: [],
-                    status: APStatus.PendingPayment,
-                };
-                const savedAP = await apiService.createAccountPayable(newAPData);
-                newAPs.push(savedAP);
             }
 
             if (req.isPreOp && req.prospectId && newPOs.length > 0 && typeof preOpRubros !== 'undefined' && typeof apiService.createPreOpExpense !== 'undefined') {
@@ -288,13 +264,10 @@ const PurchasingDashboard: React.FC = () => {
             }
 
             setPurchaseOrders(prev => [...newPOs, ...prev]);
-            if (newAPs.length > 0) {
-                setAccountsPayable(prev => [...newAPs, ...prev]);
-            }
 
             const updatedReq = {
                 ...req,
-                status: ServiceRequestStatus.POApproved,
+                status: ServiceRequestStatus.POPendingApproval,
                 finalJustification: justification,
                 winnerSelection: winners
             };

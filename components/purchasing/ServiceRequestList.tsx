@@ -8,7 +8,7 @@ import { usePermissions } from '../../hooks/usePermissions';
 
 interface ServiceRequestListProps {
   requests: ServiceRequest[];
-  updateRequestStatus: (id: number, newStatus: ServiceRequestStatus, payload?: { overrunJustification?: string; rejectionHistory?: any; }) => void;
+  updateRequestStatus: (id: number, newStatus: ServiceRequestStatus, payload?: { overrunJustification?: string; rejectionHistory?: any; rejectionReason?: string; }) => void;
   currentUser: User;
   onEdit: (request: ServiceRequest) => void;
   projects: Project[];
@@ -192,7 +192,7 @@ export const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests
     updateRequestStatus(
       requestForRejection.id,
       ServiceRequestStatus.Rejected,
-      { rejectionHistory: [...(requestForRejection.rejectionHistory || []), rejectionEntry] }
+      { rejectionHistory: [...(requestForRejection.rejectionHistory || []), rejectionEntry], rejectionReason: rejectionText.trim() }
     );
 
     setRejectionModalOpen(false);

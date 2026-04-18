@@ -155,6 +155,7 @@ export const serviceRequests = pgTable('service_requests', {
     isPreOp: boolean('is_pre_op').default(false),
     prospectId: integer('prospect_id').references(() => prospects.id),
     rejectionHistory: jsonb('rejection_history').default([]),
+    rejectionReason: text('rejection_reason'),
     winnerSelection: jsonb('winner_selection').default({}),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
@@ -210,6 +211,7 @@ export const purchaseOrders = pgTable('purchase_orders', {
     isWarranty: boolean('is_warranty').default(false),
     isPreOp: boolean('is_pre_op').default(false),
     prospectId: integer('prospect_id').references(() => prospects.id),
+    rejectionReason: text('rejection_reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 

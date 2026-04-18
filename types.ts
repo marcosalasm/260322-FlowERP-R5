@@ -61,13 +61,13 @@ export interface Project {
 }
 
 export enum ServiceRequestStatus {
-  PendingApproval = 'Pendiente Aprobación Director',
+  PendingApproval = 'Pendiente de Aprobación',
   PendingGMApproval = 'Pendiente Aprobación Gerente',
-  Approved = 'Aprobada para Cotizar',
+  Approved = 'Aprobada',
   Rejected = 'Rechazada',
   InQuotation = 'En Cotización',
   QuotationReady = 'Cotización Lista',
-  POPendingApproval = 'OC Pendiente Aprobación',
+  POPendingApproval = 'OC Pendiente de Aprobación',
   POApproved = 'OC Aprobada',
   Completed = 'Completada',
 }
@@ -115,6 +115,7 @@ export interface ServiceRequest {
   winnerSelection?: WinnerSelection;
   overrunJustification?: string;
   rejectionHistory?: { date: string; user: string; reason: string; }[];
+  rejectionReason?: string;
   isWarranty?: boolean;
   isPreOp?: boolean;
   prospectId?: number;
@@ -178,7 +179,7 @@ export interface QuoteResponse {
 
 
 export enum POStatus {
-  PendingFinancialApproval = 'Pendiente Aprobación Financiera',
+  PendingFinancialApproval = 'Por Aprobar',
   Approved = 'Aprobada',
   Rejected = 'Rechazada',
   Issued = 'Emitida',

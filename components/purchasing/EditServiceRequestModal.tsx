@@ -358,6 +358,12 @@ export const EditServiceRequestModal: React.FC<EditServiceRequestModalProps> = (
                                 Esta solicitud está bloqueada para edición porque ya se encuentra en proceso de cotización o aprobada.
                             </div>
                         )}
+                        {request.status === ServiceRequestStatus.Rejected && request.rejectionReason && (
+                            <div className="bg-red-50 border-l-4 border-red-500 text-red-800 p-3 text-xs font-semibold rounded-r-lg">
+                                <p className="font-bold mb-1">Motivo del Rechazo:</p>
+                                <p>{request.rejectionReason}</p>
+                            </div>
+                        )}
 
                         <div className="flex flex-col">
                             <h3 className="text-lg font-bold text-dark-gray mb-4">Artículos de la Solicitud</h3>

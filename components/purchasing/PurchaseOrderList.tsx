@@ -334,7 +334,7 @@ export const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ orders, on
 
                 // 3. Delete associated AP and GR
                 const associatedAP = accountsPayable.find(ap => ap.purchaseOrderId === poToReject.id);
-                if (associatedAP) {
+                if (associatedAP && associatedAP.paidAmount === 0 && (associatedAP.payments || []).length === 0) {
                     await apiService.deleteAccountPayable(associatedAP.id);
                     setAccountsPayable(prev => prev.filter(ap => ap.id !== associatedAP.id));
                 }
@@ -633,7 +633,31 @@ export const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ orders, on
         try {
             const saved = await apiService.updatePurchaseOrder(po.id, { status: POStatus.Approved });
             setPurchaseOrders(prev => prev.map(p => p.id === saved.id ? saved : p));
-            showToast(`Orden de Compra #${saved.id} aprobada.`, 'success');
+
+            // Create Account Payable
+            let creditDays = 0;
+            if ((po.paymentTerms || '').toLowerCase().includes('crédito')) {
+                const daysMatch = (po.paymentTerms || '').match(/\d+/);
+                creditDays = daysMatch ? parseInt(daysMatch[0], 10) : 30;
+            }
+            const dueDate = addDays(new Date(saved.orderDate), creditDays).toISOString().split('T')[0];
+
+            const newAPData: Omit<AccountPayable, 'id'> = {
+                purchaseOrderId: saved.id,
+                supplierId: saved.supplierId,
+                supplierName: saved.supplierName,
+                invoiceNumber: `PENDIENTE-OC-${saved.id}`,
+                invoiceDate: saved.orderDate,
+                dueDate: dueDate,
+                totalAmount: saved.totalAmount,
+                paidAmount: 0,
+                payments: [],
+                status: APStatus.PendingPayment,
+            };
+            const savedAP = await apiService.createAccountPayable(newAPData);
+            setAccountsPayable(prev => [...prev, savedAP]);
+
+            showToast(`Orden de Compra #${saved.id} aprobada y cuenta por pagar generada.`, 'success');
             setDetailModalItem(null);
         } catch (error) {
             console.error('Error approving PO:', error);
