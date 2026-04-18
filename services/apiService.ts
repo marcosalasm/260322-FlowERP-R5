@@ -391,7 +391,7 @@ export const apiService = {
         return keysToCamel(data || []);
     },
     createGoodsReceipt: async (data: any) => {
-        const { items, id: _frontendId, ...grData } = data;
+        const { items, id: _frontendId, po, purchase_orders, purchaseOrders, ...grData } = data;
         const payload = keysToSnake(grData);
         
         const { data: newGR, error } = await supabase.from('goods_receipts').insert([payload]).select().single();
@@ -408,7 +408,7 @@ export const apiService = {
         return keysToCamel(newGR);
     },
     updateGoodsReceipt: async (id: number, data: any) => {
-        const { items, ...grData } = data;
+        const { items, po, purchase_orders, purchaseOrders, ...grData } = data;
         const payload = keysToSnake(grData);
         
         const { data: updatedGR, error } = await supabase.from('goods_receipts').update(payload).eq('id', id).select().single();
