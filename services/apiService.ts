@@ -333,8 +333,10 @@ export const apiService = {
     // ── Purchase Orders ────────────────────────────────────────────────────
     getPurchaseOrders: async () => {
         const data = await fetchAllPaginated('purchase_orders', '*, items:purchase_order_items(*), suppliers(name), projects(name)', q => 
-            q.in('status', ['Emitida', 'OC Aprobada', 'Aprobada', 'Pendiente OC', 'Aprobación Financiera', 'Recibida', 'Cancelada', 'Recepción Parcial', 'Rechazada', 'Pendiente'])
-             .order('created_at', { ascending: false })
+            q.in('status', [
+                'Por Aprobar', 'Aprobada', 'Rechazada', 'Emitida', 'Recibida Parcial', 'Recibida Completa', 'Cancelada', // New statuses
+                'OC Aprobada', 'Pendiente OC', 'Aprobación Financiera', 'Recibida', 'Recepción Parcial', 'Pendiente' // Legacy statuses
+            ]).order('created_at', { ascending: false })
         );
         const mappedData = keysToCamel(data || []);
         // Map joined data to the expected flat properties

@@ -631,8 +631,11 @@ export const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ orders, on
 
     const handleApprovePO = async (po: PurchaseOrderType) => {
         try {
-            const saved = await apiService.updatePurchaseOrder(po.id, { status: POStatus.Approved });
-            setPurchaseOrders(prev => prev.map(p => p.id === saved.id ? saved : p));
+            await apiService.updatePurchaseOrder(po.id, { status: POStatus.Approved });
+            
+            // Re-fetch to ensure data integrity with joins, or safely update local state
+            const updatedOrders = await apiService.getPurchaseOrders();
+            setPurchaseOrders(updatedOrders);
 
             // Create Account Payable
             let creditDays = 0;
@@ -640,16 +643,16 @@ export const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ orders, on
                 const daysMatch = (po.paymentTerms || '').match(/\d+/);
                 creditDays = daysMatch ? parseInt(daysMatch[0], 10) : 30;
             }
-            const dueDate = addDays(new Date(saved.orderDate), creditDays).toISOString().split('T')[0];
+            const dueDate = addDays(new Date(po.orderDate), creditDays).toISOString().split('T')[0];
 
             const newAPData: Omit<AccountPayable, 'id'> = {
-                purchaseOrderId: saved.id,
-                supplierId: saved.supplierId,
-                supplierName: saved.supplierName,
-                invoiceNumber: `PENDIENTE-OC-${saved.id}`,
-                invoiceDate: saved.orderDate,
+                purchaseOrderId: po.id,
+                supplierId: po.supplierId,
+                supplierName: po.supplierName,
+                invoiceNumber: `PENDIENTE-OC-${po.id}`,
+                invoiceDate: po.orderDate,
                 dueDate: dueDate,
-                totalAmount: saved.totalAmount,
+                totalAmount: po.totalAmount,
                 paidAmount: 0,
                 payments: [],
                 status: APStatus.PendingPayment,
@@ -657,7 +660,7 @@ export const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ orders, on
             const savedAP = await apiService.createAccountPayable(newAPData);
             setAccountsPayable(prev => [...prev, savedAP]);
 
-            showToast(`Orden de Compra #${saved.id} aprobada y cuenta por pagar generada.`, 'success');
+            showToast(`Orden de Compra #${po.id} aprobada y cuenta por pagar generada.`, 'success');
             setDetailModalItem(null);
         } catch (error) {
             console.error('Error approving PO:', error);
