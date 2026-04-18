@@ -236,10 +236,15 @@ export const apiService = {
         if (error) throw new Error('Failed to create service request: ' + error.message);
         
         if (items && items.length > 0) {
-            const itemsPayload = items.map((item: any) => ({
-                ...keysToSnake(item),
-                service_request_id: newSR.id
-            }));
+            const itemsPayload = items.map((item: any) => {
+                const snakeItem = keysToSnake(item);
+                // Sanitize payload: remove material_id if DB doesn't support it yet
+                delete snakeItem.material_id;
+                return {
+                    ...snakeItem,
+                    service_request_id: newSR.id
+                };
+            });
             const { error: itemsError } = await supabase.from('service_request_items').insert(itemsPayload);
             if (itemsError) throw new Error('Failed to create service request items: ' + itemsError.message);
         }
@@ -257,7 +262,10 @@ export const apiService = {
             if (items.length > 0) {
                 const itemsPayload = items.map((item: any) => {
                     const { id: _itemId, ...itemRest } = item;
-                    return { ...keysToSnake(itemRest), service_request_id: updatedSR.id };
+                    const snakeItem = keysToSnake(itemRest);
+                    // Sanitize payload: remove material_id if DB doesn't support it yet
+                    delete snakeItem.material_id;
+                    return { ...snakeItem, service_request_id: updatedSR.id };
                 });
                 const { error: itemsError } = await supabase.from('service_request_items').insert(itemsPayload);
                 if (itemsError) throw new Error('Failed to update service request items: ' + itemsError.message);
