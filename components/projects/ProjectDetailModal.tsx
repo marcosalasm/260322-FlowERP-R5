@@ -84,12 +84,28 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
 
 
     const projectData = useMemo(() => {
+        const filteredChangeOrders = changeOrders
+            .filter(co => co.offerId === project.offerId);
+
+        const totalesOCG = filteredChangeOrders
+            .filter(oc => oc.status === 'Aprobada')
+            .reduce((acc, oc) => {
+                const multiplier = oc.changeType === 'Crédito' ? -1 : 1;
+                return {
+                    monto: acc.monto + (Number(oc.amountImpact) * multiplier || 0),
+                    presupuesto: acc.presupuesto + (Number(oc.budgetImpact) * multiplier || 0)
+                };
+            }, { monto: 0, presupuesto: 0 });
+
+        const modifiedContractAmount = Number(project.initialContractAmount || project.contractAmount) + totalesOCG.monto;
+        const modifiedBudget = Number(project.initialBudget || project.budget) + totalesOCG.presupuesto;
+
         const totalExpenses = Number(project.expenses);
         const associatedAR = accountsReceivable.find(ar => ar.offerId === project.offerId);
         const paidAmount = associatedAR ? associatedAR.payments.reduce((sum, p) => sum + Number(p.amount), 0) : 0;
         const outstandingReceivables = associatedAR ? Number(associatedAR.contractAmount) - paidAmount : 0;
-        const projectBalance = Number(project.contractAmount) - totalExpenses;
-        const budgetCompliance = Number(project.budget) - totalExpenses;
+        const projectBalance = modifiedContractAmount - totalExpenses;
+        const budgetCompliance = modifiedBudget - totalExpenses;
 
         const offer = offers.find(o => o.id === project.offerId);
         const budget = budgets.find(b => b.id === offer?.budgetId);
@@ -105,9 +121,6 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
         const unforeseenItems = serviceRequests
             .filter(sr => sr.projectId === project.id && [ServiceRequestStatus.Approved, ServiceRequestStatus.InQuotation, ServiceRequestStatus.QuotationReady, ServiceRequestStatus.POPendingApproval, ServiceRequestStatus.POApproved, ServiceRequestStatus.Completed].includes(sr.status))
             .flatMap(sr => sr.items.filter(item => item.isUnforeseen).map(item => ({ ...item, serviceRequestId: sr.id })));
-
-        const filteredChangeOrders = changeOrders
-            .filter(co => co.offerId === project.offerId);
 
         const projectPOIds = new Set(purchaseOrders.filter(po => po.projectId === project.id).map(po => po.id));
         const projectSubcontractIds = new Set(subcontracts.filter(sc => sc.projectId === project.id).map(sc => sc.id));
@@ -149,7 +162,9 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             totalUnforeseenBudget,
             unforeseenItems,
             totalAccountsPayable,
-            linkedPreOpExpensesList
+            linkedPreOpExpensesList,
+            modifiedContractAmount,
+            modifiedBudget
         };
     }, [project, purchaseOrders, accountsReceivable, changeOrders, budgets, offers, serviceRequests, subcontracts, preOpExpenses]);
 
@@ -230,8 +245,8 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                                 <div className="grid grid-cols-2 gap-4">
                                     <FinancialStat label="Monto Inicial" value={formatCurrency(project.initialContractAmount)} />
                                     <FinancialStat label="Presupuesto Inicial" value={formatCurrency(project.initialBudget)} />
-                                    <FinancialStat label="Monto Modificado" value={formatCurrency(project.contractAmount)} />
-                                    <FinancialStat label="Presupuesto Modificado" value={formatCurrency(project.budget)} />
+                                    <FinancialStat label="Monto Modificado" value={formatCurrency(projectData.modifiedContractAmount)} />
+                                    <FinancialStat label="Presupuesto Modificado" value={formatCurrency(projectData.modifiedBudget)} />
                                     <div className="bg-slate-50 p-4 rounded-lg border border-orange-100 col-span-2">
                                         <p className="text-sm text-slate-500">Total Gastos Reales (Pagos + Pre-Op)</p>
                                         <p className="text-2xl font-bold font-mono text-orange-600">{formatCurrency(projectData.totalExpenses)}</p>
