@@ -99,7 +99,12 @@ export const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> =
         const totalValue = Object.entries(serviceRequest.winnerSelection).reduce((acc, [itemId, winnerInfo]) => {
             const item = (serviceRequest.items || []).find(i => i.id === Number(itemId));
             const quoteResponse = (quotesForRequest || []).find(qr => qr.id === (winnerInfo as any).quoteResponseId);
-            const quoteLineItem = (quoteResponse?.items || []).find(qli => qli.serviceRequestItemId === Number(itemId));
+            const quoteLineItem = (quoteResponse?.items || []).find(qli => 
+                qli.serviceRequestItemId === Number(itemId) || 
+                (qli as any).request_item_id === Number(itemId) || 
+                ((qli as any).material_id && item?.material_id && (qli as any).material_id === item.material_id) ||
+                ((qli as any).name && item?.name && (qli as any).name.toLowerCase() === item.name.toLowerCase())
+            );
 
             if (item && quoteResponse && quoteLineItem) {
                 return acc + (item.quantity * quoteLineItem.unitPrice);
@@ -280,7 +285,12 @@ export const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> =
                                                 <tr key={item.id} className="border-t">
                                                     <td className="p-2 font-medium bg-white sticky left-0 z-10">{item.name}<br /><span className="text-xs text-slate-500">Cant: {item.quantity} {item.unit}</span></td>
                                                     {quotesForRequest.map(quote => {
-                                                        const quoteItem = quote.items.find(i => i.serviceRequestItemId === item.id);
+                                                        const quoteItem = quote.items.find(i => 
+                                                            i.serviceRequestItemId === item.id || 
+                                                            (i as any).request_item_id === item.id || 
+                                                            ((i as any).material_id && item.material_id && (i as any).material_id === item.material_id) ||
+                                                            ((i as any).name && item.name && (i as any).name.toLowerCase() === item.name.toLowerCase())
+                                                        );
                                                         const isWinner = serviceRequest.winnerSelection?.[item.id]?.quoteResponseId === quote.id;
                                                         return (
                                                             <td key={quote.id} className={`p-2 text-center border-l ${isWinner ? 'bg-blue-50' : ''}`}>

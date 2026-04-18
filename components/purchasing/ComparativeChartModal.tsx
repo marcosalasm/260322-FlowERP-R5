@@ -73,7 +73,12 @@ export const ComparativeChartModal: React.FC<ComparativeChartModalProps> = ({ is
         const newWinners = { ...winners };
         request.items.forEach(item => {
             // Only select if the supplier has a price for this item
-            if (quote.items.some(qi => qi.serviceRequestItemId === item.id)) {
+            if (quote.items.some(qi => 
+                qi.serviceRequestItemId === item.id || 
+                (qi as any).request_item_id === item.id || 
+                ((qi as any).material_id && item.material_id && (qi as any).material_id === item.material_id) ||
+                ((qi as any).name && item.name && (qi as any).name.toLowerCase() === item.name.toLowerCase())
+            )) {
                 newWinners[item.id] = { quoteResponseId: quote.id, supplierId: quote.supplierId };
             }
         });
@@ -88,7 +93,12 @@ export const ComparativeChartModal: React.FC<ComparativeChartModalProps> = ({ is
             const winnerInfo = winners[itemId];
             const serviceItem = request.items.find(i => i.id === Number(itemId));
             const quote = quotesForRequest.find(q => q.id === winnerInfo.quoteResponseId);
-            const quoteItem = quote?.items.find(qi => qi.serviceRequestItemId === Number(itemId));
+            const quoteItem = quote?.items.find(qi => 
+                qi.serviceRequestItemId === Number(itemId) || 
+                (qi as any).request_item_id === Number(itemId) || 
+                ((qi as any).material_id && serviceItem?.material_id && (qi as any).material_id === serviceItem.material_id) ||
+                ((qi as any).name && serviceItem?.name && (qi as any).name.toLowerCase() === serviceItem.name.toLowerCase())
+            );
 
             if (serviceItem && quoteItem) {
                 total += serviceItem.quantity * quoteItem.unitPrice;
@@ -173,7 +183,12 @@ export const ComparativeChartModal: React.FC<ComparativeChartModalProps> = ({ is
                             {request.items.map(item => {
                                 let minPrice = Infinity;
                                 quotesForRequest.forEach(q => {
-                                    const quoteItem = q.items.find(i => i.serviceRequestItemId === item.id);
+                                    const quoteItem = q.items.find(i => 
+                                        i.serviceRequestItemId === item.id || 
+                                        (i as any).request_item_id === item.id || 
+                                        ((i as any).material_id && item.material_id && (i as any).material_id === item.material_id) ||
+                                        ((i as any).name && item.name && (i as any).name.toLowerCase() === item.name.toLowerCase())
+                                    );
                                     if (quoteItem) {
                                         const numPrice = Number(quoteItem.unitPrice);
                                         if (!isNaN(numPrice) && numPrice >= 0 && numPrice < minPrice) {
@@ -189,7 +204,12 @@ export const ComparativeChartModal: React.FC<ComparativeChartModalProps> = ({ is
                                             <span className="block text-xs font-normal text-slate-500">Cant: {item.quantity} {item.unit}</span>
                                         </td>
                                         {quotesForRequest.map(quote => {
-                                            const quoteItem = quote.items.find(i => i.serviceRequestItemId === item.id);
+                                            const quoteItem = quote.items.find(i => 
+                                                i.serviceRequestItemId === item.id || 
+                                                (i as any).request_item_id === item.id || 
+                                                ((i as any).material_id && item.material_id && (i as any).material_id === item.material_id) ||
+                                                ((i as any).name && item.name && (i as any).name.toLowerCase() === item.name.toLowerCase())
+                                            );
                                             const isWinner = winners[item.id]?.quoteResponseId === quote.id;
                                             const numPrice = quoteItem ? Number(quoteItem.unitPrice) : null;
                                             const isLowestPrice = numPrice !== null && minPrice !== Infinity && numPrice === minPrice;
