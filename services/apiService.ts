@@ -345,7 +345,7 @@ export const apiService = {
         
         if (items && items.length > 0) {
             const itemsPayload = items.map((item: any) => {
-                const { id: _itemId, ...restItem } = item;
+                const { id: _itemId, serviceRequestId, service_request_id, ...restItem } = item;
                 return {
                     ...keysToSnake(restItem),
                     purchase_order_id: newPO.id,
@@ -368,7 +368,7 @@ export const apiService = {
             await supabase.from('purchase_order_items').delete().eq('purchase_order_id', id);
             if (items.length > 0) {
                 const itemsPayload = items.map((item: any) => {
-                    const { id: _itemId, ...itemRest } = item;
+                    const { id: _itemId, serviceRequestId, service_request_id, ...itemRest } = item;
                     return { ...keysToSnake(itemRest), purchase_order_id: updatedPO.id };
                 });
                 const { error: itemsError } = await supabase.from('purchase_order_items').insert(itemsPayload);
