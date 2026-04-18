@@ -80,7 +80,7 @@ export const AccountsPayableList: React.FC<AccountsPayableListProps> = ({ accoun
     const overdue: AccountPayable[] = [];
     const upcoming: AccountPayable[] = [];
 
-    enrichedAccountsPayable.forEach(acc => {
+    (enrichedAccountsPayable || []).forEach(acc => {
       if (acc.status !== APStatus.Paid) {
         const dueDate = new Date(`${acc.dueDate}T00:00:00`);
         const daysUntilDue = differenceInDays(dueDate, now);

@@ -125,7 +125,7 @@ export const EditServiceRequestModal: React.FC<EditServiceRequestModalProps> = (
             .filter(req => req.id !== request.id && req.projectId === request.projectId &&
                 [ServiceRequestStatus.PendingApproval, ServiceRequestStatus.PendingGMApproval, ServiceRequestStatus.InQuotation, ServiceRequestStatus.QuotationReady].includes(req.status))
             .forEach(req => {
-                req.items.forEach(item => {
+                (req.items || []).forEach(item => {
                     const key = item.name.trim().toLowerCase();
                     quantityMap.set(key, (quantityMap.get(key) || 0) + Number(item.quantity || 0));
                 });
@@ -136,7 +136,7 @@ export const EditServiceRequestModal: React.FC<EditServiceRequestModalProps> = (
             .filter(po => po.projectId === request.projectId &&
                 po.status !== POStatus.Rejected && po.status !== POStatus.Cancelled)
             .forEach(po => {
-                po.items.forEach(item => {
+                (po.items || []).forEach(item => {
                     const key = item.name.trim().toLowerCase();
                     quantityMap.set(key, (quantityMap.get(key) || 0) + Number(item.quantity || 0));
                 });
@@ -302,7 +302,7 @@ export const EditServiceRequestModal: React.FC<EditServiceRequestModalProps> = (
         });
 
         // Items removed
-        request.items.forEach(oi => {
+        (request.items || []).forEach(oi => {
             if (!finalItems.some(ni => ni.id === oi.id)) {
                 history.push({
                     user: currentUser.name,

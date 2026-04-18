@@ -335,8 +335,8 @@ const PurchasingDashboard: React.FC = () => {
 
             const quantityChanges = new Map<string, { delta: number, unit: string }>();
 
-            updatedReceipt.items.forEach(updatedItem => {
-                const originalItem = originalReceipt.items.find(i => i.purchaseOrderItemId === updatedItem.purchaseOrderItemId);
+            (updatedReceipt.items || []).forEach(updatedItem => {
+                const originalItem = (originalReceipt.items || []).find(i => i.purchaseOrderItemId === updatedItem.purchaseOrderItemId);
                 if (originalItem) {
                     const delta = updatedItem.quantityReceived - originalItem.quantityReceived;
                     if (delta > 0) { // Only track increases from receipts
@@ -491,8 +491,8 @@ const PurchasingDashboard: React.FC = () => {
                     ];
 
                     const totalCreditedByItem = new Map<number, number>();
-                    allApprovedCNsForPO.forEach(cn => {
-                        cn.items.forEach(item => {
+                    (allApprovedCNsForPO || []).forEach(cn => {
+                        (cn.items || []).forEach(item => {
                             const current = totalCreditedByItem.get(item.purchaseOrderItemId) || 0;
                             totalCreditedByItem.set(item.purchaseOrderItemId, current + item.quantityToCredit);
                         });

@@ -71,7 +71,7 @@ export const ComparativeChartModal: React.FC<ComparativeChartModalProps> = ({ is
     const handleSelectAllFromSupplier = (quote: QuoteResponse) => {
         if (!request) return;
         const newWinners = { ...winners };
-        request.items.forEach(item => {
+        (request.items || []).forEach(item => {
             // Only select if the supplier has a price for this item
             if (quote.items.some(qi => 
                 qi.serviceRequestItemId === item.id || 
@@ -182,8 +182,8 @@ export const ComparativeChartModal: React.FC<ComparativeChartModalProps> = ({ is
                         <tbody>
                             {request.items.map(item => {
                                 let minPrice = Infinity;
-                                quotesForRequest.forEach(q => {
-                                    const quoteItem = q.items.find(i => 
+                                (quotesForRequest || []).forEach(q => {
+                                    const quoteItem = (q.items || []).find(i => 
                                         i.serviceRequestItemId === item.id || 
                                         (i as any).request_item_id === item.id || 
                                         ((i as any).material_id && item.material_id && (i as any).material_id === item.material_id) ||
